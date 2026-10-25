@@ -8,7 +8,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');
   try {
-    const url = process.env.DATABASE_URL;
+    const url = process.env.DATABASE_URL?.trim();
     if (!url) return res.status(503).json({ error: 'storage not configured' });
     const sql = neon(url);
     await sql`create table if not exists uploads (
