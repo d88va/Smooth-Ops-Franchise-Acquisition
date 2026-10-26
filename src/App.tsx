@@ -90,7 +90,7 @@ function Dashboard() {
       )}
       {error && <div role="alert" className="mb-3 border border-o-decline border-l-8 bg-sheet p-3">{error}</div>}
 
-      <div className="mb-5"><QueryBar /></div>
+      <div className="mb-5"><QueryBar /><div className="mt-3 lg:hidden"><QueryAnswer /></div></div>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <div className="space-y-5">
@@ -184,7 +184,7 @@ function Dashboard() {
         </div>
 
         <aside aria-label="Decisions" className="space-y-6 lg:sticky lg:top-3 lg:max-h-[calc(100vh-24px)] lg:self-start lg:overflow-auto lg:pr-2">
-          <QueryAnswer />
+          <div className="hidden lg:block"><QueryAnswer /></div>
           <ChangesPanel />
           <ApplicantPanel />
         </aside>
