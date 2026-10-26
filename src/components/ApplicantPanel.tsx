@@ -1,9 +1,19 @@
 import { useMemo, useState } from 'react';
 import { counterfactuals, OUTCOMES, type Outcome } from '../engine';
 import { select, setOverride, useStore } from '../state/store';
-import { btnPrimary, btn, field, Mark, OUTCOME_COLOR, Panel, SectionTitle, weekDate } from './ui';
+import { btnPrimary, btn, field, Icon, Mark, OUTCOME_COLOR, weekDate } from './ui';
 
-export function ApplicantPanel() {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="border-t border-line py-5">
+      <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+/** Decision detail for one applicant. Opens from a pin, a card, the dropdown or a question. */
+export function ApplicantPanel({ onClose }: { onClose: () => void }) {
   const selected = useStore((s) => s.selected);
   const ds = useStore((s) => s.ds);
   const result = useStore((s) => s.result);
@@ -16,115 +26,111 @@ export function ApplicantPanel() {
 
   return (
     <div>
-      <label htmlFor="app-pick" className="block text-lg font-semibold">Applicant</label>
-      <select id="app-pick" value={selected ?? ''} onChange={(e) => select(e.target.value || null)} className={field + ' mt-1 w-full'}>
-        <option value="">Choose an applicant</option>
-        {ds.applications.map((x) => (
-          <option key={x.id} value={x.id}>{x.id}, {x.name}, {result.decisions[x.id].outcome}</option>
-        ))}
-      </select>
+      <div className="flex items-center gap-2">
+        <button onClick={onClose} aria-label="Close the decision" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-wash"><Icon name="close" size={18} /></button>
+        <label htmlFor="app-pick" className="sr-only">Choose an applicant</label>
+        <select id="app-pick" value={selected ?? ''} onChange={(e) => select(e.target.value || null)} className={field + ' min-w-0 flex-1 font-semibold'}>
+          <option value="">Choose an applicant</option>
+          {ds.applications.map((x) => (
+            <option key={x.id} value={x.id}>{x.id}, {x.name}, {result.decisions[x.id].outcome}</option>
+          ))}
+        </select>
+      </div>
 
       {!a || !d ? (
-        <p className="mt-4 max-w-[48ch] text-soft">Choose an applicant above, click a marker on the map, or ask a question. You will see the decision, the reasons, what the applicant must do next, and their training plan.</p>
+        <p className="mt-6 max-w-[44ch] text-mute">Choose an applicant above, click a pin on the map, or ask a question. You will see the decision, the reasons, what the applicant must do next, and their training plan.</p>
       ) : (
-        <div className="mt-4">
+        <div className="mt-5">
           {/* verdict */}
-          <div className="border border-ink bg-sheet p-4" style={{ borderTopWidth: 6, borderTopColor: OUTCOME_COLOR[d.outcome] }}>
+          <div className="rounded-xl p-5" style={{ background: OUTCOME_COLOR[d.outcome] + '1A' }}>
             <div className="flex items-center gap-3">
-              <Mark o={d.outcome} size={40} />
-              <div>
-                <p className="text-3xl font-semibold leading-none">{d.outcome}</p>
-                <p className="mt-1 font-mono text-sm text-soft">{a.id}, {a.name}</p>
+              <Mark o={d.outcome} size={44} />
+              <div className="min-w-0">
+                <p className="text-3xl font-bold leading-none">{d.outcome}</p>
+                <p className="mt-1 truncate text-sm">{a.name}, {a.id}</p>
               </div>
-              <p className="ml-auto text-right font-mono text-sm text-soft">score<br /><span className="text-xl text-ink">{d.score}</span>/100</p>
+              <p className="ml-auto text-right text-xs text-mute">Score<br /><span className="text-2xl font-bold text-ink">{d.score}</span> of 100</p>
             </div>
-            <p className="mt-3 max-w-[60ch] text-lg font-medium leading-snug">{d.headline}</p>
-            <p className="mt-1 text-sm text-soft">{a.city ?? 'City unknown'}, pin {a.pinRaw || 'not given'}, {d.territoryId ?? 'no territory'}, prefers {a.language}</p>
+            <p className="mt-4 text-lg font-semibold leading-snug">{d.headline}</p>
+            <p className="mt-1 text-sm text-mute">{a.city ?? 'City unknown'}, pin {a.pinRaw || 'not given'}, {d.territoryId ?? 'no territory'}, prefers {a.language}</p>
           </div>
 
-          <Panel className="mt-4">
-            <SectionTitle>Why</SectionTitle>
-            <ul className="max-w-[68ch] list-disc space-y-1 pl-5">
+          <Section title="Why">
+            <ul className="list-disc space-y-1 pl-5">
               {d.reasons.map((r, i) => <li key={i}>{r}</li>)}
             </ul>
-            <p className="mt-2 text-sm text-soft">Decided by: {d.decidedBy}</p>
-            {d.conditions.length > 0 && <p className="mt-2 border-l-4 border-ink bg-sheet px-3 py-1.5"><b className="font-semibold">Conditions.</b> {d.conditions.join('; ')}</p>}
+            <p className="mt-2 text-sm text-mute">Decided by: {d.decidedBy}</p>
+            {d.conditions.length > 0 && <p className="mt-3 rounded-lg bg-wash p-3"><b className="font-semibold">Conditions.</b> {d.conditions.join('; ')}</p>}
             {d.overridden && (
-              <p className="mt-2 border-l-4 border-ink bg-sheet px-3 py-1.5"><b className="font-semibold">Manual override {d.overridden.applied ? 'applied' : 'not applied'}.</b> {d.overridden.outcome}: “{d.overridden.reason}”. {d.overridden.note}</p>
+              <p className="mt-3 rounded-lg bg-wash p-3"><b className="font-semibold">Manual override {d.overridden.applied ? 'applied' : 'not applied'}.</b> {d.overridden.outcome}: “{d.overridden.reason}”. {d.overridden.note}</p>
             )}
-          </Panel>
+          </Section>
 
           {d.outcome !== 'Approved' && (
-            <Panel className="mt-4">
-              <SectionTitle>This applicant would be approved if</SectionTitle>
-              <ul className="max-w-[68ch] list-disc space-y-1 pl-5">
+            <Section title="This applicant would be approved if">
+              <ul className="list-disc space-y-1 pl-5">
                 {cfs.map((c, i) => <li key={i}>{c.text}</li>)}
               </ul>
-              <p className="mt-1 text-sm text-soft">Each option was tested by running the engine again on a changed copy of the data.</p>
-            </Panel>
+              <p className="mt-2 text-sm text-mute">Each option was tested by running the engine again on a changed copy of the data.</p>
+            </Section>
           )}
 
-          <Panel className="mt-4">
-            <SectionTitle>What the applicant must do next</SectionTitle>
-            <ol>
+          <Section title="What the applicant must do next">
+            <ol className="space-y-3">
               {d.nextSteps.map((s, i) => (
-                <li key={i} className="flex gap-3 border-t border-rule py-2">
-                  <span className="w-5 shrink-0 font-mono text-sm text-soft">{i + 1}</span>
+                <li key={i} className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-wash text-xs font-bold">{i + 1}</span>
                   <span className="flex-1">{s.text}</span>
-                  <span className="shrink-0 text-right text-sm text-soft">{s.when}{s.dueWeek !== undefined && <span className="block font-medium text-ink">by {weekDate(s.dueWeek)}</span>}</span>
+                  <span className="shrink-0 text-right text-sm text-mute">{s.when}{s.dueWeek !== undefined && <span className="block font-semibold text-ink">by {weekDate(s.dueWeek)}</span>}</span>
                 </li>
               ))}
             </ol>
-          </Panel>
+          </Section>
 
           {d.plan && (
-            <Panel className="mt-4">
-              <SectionTitle>Training plan</SectionTitle>
-              <p className="font-medium">{d.plan.track}</p>
-              <p className="text-sm text-soft">Taught in {d.plan.language}. Store opens {weekDate(d.plan.openWeek)}{d.plan.redated ? ' (date moved)' : ''}.</p>
-              <ul className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
-                {d.plan.modules.map((m) => <li key={m} className="flex gap-2"><span aria-hidden="true">•</span>{m}</li>)}
+            <Section title="Training plan">
+              <p className="font-semibold">{d.plan.track}</p>
+              <p className="text-sm text-mute">Taught in {d.plan.language}. Store opens {weekDate(d.plan.openWeek)}{d.plan.redated ? ' (date moved)' : ''}.</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {d.plan.modules.map((m) => <li key={m} className="rounded-full bg-wash px-3 py-1 text-sm">{m}</li>)}
               </ul>
-              <div className="mt-3">
+              <ol className="mt-4">
                 {d.plan.milestones.map((m) => (
-                  <div key={m.name} className="flex items-baseline gap-3 border-t border-rule py-1.5">
-                    <span className="w-28 shrink-0 font-mono text-sm">{weekDate(m.dueWeek)}</span>
-                    <span>{m.name}{m.note ? <span className="text-soft"> ({m.note})</span> : null}</span>
-                  </div>
+                  <li key={m.name} className="flex items-baseline gap-3 border-t border-line py-2">
+                    <span className="w-28 shrink-0 text-sm font-semibold">{weekDate(m.dueWeek)}</span>
+                    <span>{m.name}{m.note ? <span className="text-mute"> ({m.note})</span> : null}</span>
+                  </li>
                 ))}
-              </div>
-              <p className={`mt-3 px-3 py-1.5 ${d.plan.redated ? 'border-l-4 border-ink bg-sheet' : 'text-soft'}`}>{d.plan.feasibility}</p>
-            </Panel>
+              </ol>
+              <p className={`mt-3 rounded-lg p-3 ${d.plan.redated ? 'bg-wash' : 'text-mute'}`}>{d.plan.feasibility}</p>
+            </Section>
           )}
 
           {d.breakdown.length > 0 && (
-            <Panel className="mt-4">
-              <SectionTitle>How the score adds up</SectionTitle>
-              <div className="space-y-2">
+            <Section title="How the score adds up">
+              <div className="space-y-3">
                 {d.breakdown.map((b) => (
                   <div key={b.key}>
-                    <div className="flex justify-between text-sm"><span>{b.label}</span><span className="font-mono">{b.max > 0 ? `${b.score} of ${b.max}` : b.score}</span></div>
-                    {b.max > 0 && <div className="mt-0.5 h-2 border border-ink bg-sheet"><div className="h-full bg-ink" style={{ width: `${(b.score / b.max) * 100}%` }} /></div>}
-                    <div className="text-sm text-soft">{b.note}</div>
+                    <div className="flex justify-between text-sm"><span className="font-medium">{b.label}</span><span className="font-semibold">{b.max > 0 ? `${b.score} of ${b.max}` : b.score}</span></div>
+                    {b.max > 0 && <div className="mt-1 h-1.5 rounded-full bg-line"><div className="h-full rounded-full bg-ink" style={{ width: `${(b.score / b.max) * 100}%` }} /></div>}
+                    <div className="mt-0.5 text-sm text-mute">{b.note}</div>
                   </div>
                 ))}
               </div>
-            </Panel>
+            </Section>
           )}
 
           {d.flags.length > 0 && (
-            <Panel className="mt-4">
-              <SectionTitle>Problems found in the data</SectionTitle>
+            <Section title="Problems found in the data">
               <ul className="space-y-1">
                 {d.flags.map((f, i) => (
-                  <li key={i} className="flex gap-2"><span className="w-14 shrink-0 text-sm font-medium">{f.severity === 'error' ? 'Error' : f.severity === 'warn' ? 'Warning' : 'Note'}</span>{f.message}</li>
+                  <li key={i} className="flex gap-2"><span className="w-16 shrink-0 text-sm font-semibold">{f.severity === 'error' ? 'Error' : f.severity === 'warn' ? 'Warning' : 'Note'}</span>{f.message}</li>
                 ))}
               </ul>
-            </Panel>
+            </Section>
           )}
 
-          <Panel className="mt-4">
-            <SectionTitle>Override this decision</SectionTitle>
+          <Section title="Override this decision">
             <div className="flex flex-wrap gap-2">
               <select value={ov} onChange={(e) => setOv(e.target.value as Outcome)} className={field} aria-label="Outcome to set">
                 {OUTCOMES.map((o) => <option key={o}>{o}</option>)}
@@ -133,8 +139,8 @@ export function ApplicantPanel() {
               <button disabled={!why.trim()} onClick={() => { setOverride(a.id, ov, why.trim()); setWhy(''); }} className={btnPrimary}>Apply override</button>
               {overrides[a.id] && <button onClick={() => setOverride(a.id, null, '')} className={btn}>Remove override</button>}
             </div>
-            <p className="mt-2 text-sm text-soft">The engine still allows only one store per pin and respects territory slot limits. An override that breaks either is refused.</p>
-          </Panel>
+            <p className="mt-2 text-sm text-mute">The engine still allows only one store per pin and respects territory slot limits. An override that breaks either is refused.</p>
+          </Section>
         </div>
       )}
     </div>

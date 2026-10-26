@@ -3,7 +3,7 @@ import { sampleDataset } from '../data/sample';
 import { parseWorkbook, type Outcome } from '../engine';
 import { saveUpload } from '../state/persist';
 import { loadDataset, setError, setSave, useStore } from '../state/store';
-import { btn, btnPrimary, Mark } from './ui';
+import { btn, btnPrimary, Icon, Mark } from './ui';
 
 const MEANING: [Outcome, string][] = [
   ['Approved', 'Gets a store in the territory. Next steps and a training plan follow.'],
@@ -47,59 +47,60 @@ export function UploadScreen() {
   };
 
   return (
-    <main className="mx-auto grid min-h-screen max-w-6xl content-center gap-10 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-      <div>
-        <h1 className="max-w-[18ch] text-4xl font-semibold leading-[1.05] sm:text-5xl">Franchise partner decisions</h1>
-        <p className="mt-4 max-w-[58ch] text-lg">
-          Upload an Excel file of applicants and territories. The app decides every applicant, explains why, and plots them on a map of Karnataka. Then type a question or a new fact and watch the map change.
-        </p>
+    <main className="mx-auto flex min-h-screen max-w-5xl flex-col px-5 pb-12 pt-6 sm:px-8">
+      <p className="flex items-center gap-2 text-lg font-bold">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-white"><Icon name="store" size={18} /></span>
+        Franchise partner decisions
+      </p>
 
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => { e.preventDefault(); setDrag(false); void handle(e.dataTransfer.files?.[0]); }}
-          className={`relative mt-8 border border-ink p-6 ${drag ? 'bg-sheet outline outline-2 outline-offset-2 outline-ink' : 'bg-sheet/60'}`}
-        >
-          {/* registration marks, as on a survey sheet */}
-          {['left-0 top-0', 'right-0 top-0', 'left-0 bottom-0', 'right-0 bottom-0'].map((p) => (
-            <span key={p} aria-hidden="true" className={`absolute ${p} h-3 w-3 -translate-x-0 bg-ink`} style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)', transform: p.includes('right') ? (p.includes('bottom') ? 'rotate(180deg)' : 'rotate(90deg)') : p.includes('bottom') ? 'rotate(270deg)' : undefined }} />
-          ))}
-          <p className="text-xl font-semibold">{drag ? 'Release to read the file' : 'Drop an Excel file here'}</p>
-          <p className="mt-1 max-w-[55ch] text-soft">Sheet 1 lists applications and sheet 2 lists territories. Existing stores are already built in.</p>
-          <input ref={input} type="file" accept=".xlsx,.xlsm,.xls" className="sr-only" aria-label="Choose an Excel file" onChange={(e) => { void handle(e.target.files?.[0]); e.target.value = ''; }} />
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button onClick={() => input.current?.click()} disabled={busy} className={btn + ' px-4 py-2'}>{busy ? 'Reading the file' : 'Choose a file from this computer'}</button>
-            <button onClick={() => loadDataset(sampleDataset(), 'Sample data')} className={btnPrimary + ' px-4 py-2'}>Use the sample data</button>
-          </div>
-          <a href="./sample-applications.xlsx" download className="mt-4 inline-block text-sm underline underline-offset-2">Download the Excel template</a>
-        </div>
-
-        {error && (
-          <div role="alert" className="mt-4 border border-o-decline border-l-8 bg-sheet p-4">
-            <p className="font-semibold">That file didn’t load.</p>
-            <p>{error}</p>
-            <p className="mt-1 text-sm text-soft">Try again with another file, or use the sample data.</p>
-          </div>
-        )}
-        <p className="mt-6 max-w-[62ch] text-sm text-soft">
-          Your file is read in this browser. If cloud storage is available, a copy is also saved so you can share a link to it. Decisions come from fixed rules, not from an AI model.
+      <div className="mx-auto mt-14 max-w-2xl text-center">
+        <h1 className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl">See who gets a franchise store, and why</h1>
+        <p className="mx-auto mt-4 max-w-[52ch] text-lg text-mute">
+          Upload an Excel file of applicants and territories. The app decides every applicant and plots them on a map of Karnataka. Then type a question or a new fact and watch the map change.
         </p>
       </div>
 
-      <aside aria-labelledby="meaning">
-        <h2 id="meaning" className="border-b border-ink pb-2 text-xl font-semibold">What the five outcomes mean</h2>
-        <ul>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); void handle(e.dataTransfer.files?.[0]); }}
+        className={`mx-auto mt-10 w-full max-w-2xl rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${drag ? 'border-ink bg-wash' : 'border-line bg-white'}`}
+      >
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-wash"><Icon name="upload" size={26} /></span>
+        <p className="mt-4 text-xl font-semibold">{drag ? 'Release to read the file' : 'Drop an Excel file here'}</p>
+        <p className="mx-auto mt-1 max-w-[46ch] text-mute">Sheet 1 lists applications and sheet 2 lists territories. Existing stores are already built in.</p>
+        <input ref={input} type="file" accept=".xlsx,.xlsm,.xls" className="sr-only" aria-label="Choose an Excel file" onChange={(e) => { void handle(e.target.files?.[0]); e.target.value = ''; }} />
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <button onClick={() => input.current?.click()} disabled={busy} className={btn + ' px-5 py-2.5'}>{busy ? 'Reading the file' : 'Choose a file from this computer'}</button>
+          <button onClick={() => loadDataset(sampleDataset(), 'Sample data')} className={btnPrimary}>Use the sample data</button>
+        </div>
+        <a href="./sample-applications.xlsx" download className="mt-5 inline-block text-sm font-semibold underline underline-offset-4">Download the Excel template</a>
+      </div>
+
+      {error && (
+        <div role="alert" className="mx-auto mt-4 w-full max-w-2xl rounded-xl border border-o-decline bg-white p-4 shadow-card">
+          <p className="font-semibold">That file didn’t load.</p>
+          <p>{error}</p>
+          <p className="mt-1 text-sm text-mute">Try again with another file, or use the sample data.</p>
+        </div>
+      )}
+
+      <section aria-labelledby="meaning" className="mt-16">
+        <h2 id="meaning" className="text-2xl font-bold">What the five outcomes mean</h2>
+        <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {MEANING.map(([o, text]) => (
-            <li key={o} className="flex gap-3 border-b border-rule py-3">
-              <Mark o={o} size={28} />
-              <div>
-                <p className="font-semibold">{o}</p>
-                <p className="max-w-[44ch] text-soft">{text}</p>
-              </div>
+            <li key={o} className="rounded-xl bg-white p-4 shadow-card">
+              <Mark o={o} size={32} />
+              <p className="mt-3 font-semibold">{o}</p>
+              <p className="mt-1 text-sm text-mute">{text}</p>
             </li>
           ))}
         </ul>
-      </aside>
+      </section>
+
+      <p className="mt-10 max-w-[64ch] text-sm text-mute">
+        Your file is read in this browser. If cloud storage is available, a copy is also saved so you can share a link to it. Decisions come from fixed rules, not from an AI model.
+      </p>
     </main>
   );
 }

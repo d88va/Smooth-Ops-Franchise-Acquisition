@@ -4,23 +4,24 @@
 
 :root { color-scheme: light; }
 html, body, #root { min-height: 100%; }
-body { @apply bg-paper font-sans text-[15px] leading-relaxed text-ink antialiased; }
-h1, h2, h3, h4 { @apply font-cond; }
+body { @apply bg-white font-sans text-[16px] leading-normal text-ink antialiased; }
 ::selection { background: #0072b233; }
-* { scrollbar-width: thin; scrollbar-color: #b4bfbd transparent; }
+* { scrollbar-width: thin; scrollbar-color: #c8c8c8 transparent; }
 button, select, input { font: inherit; }
 button:disabled { cursor: not-allowed; }
-:focus-visible { outline: 2px solid #17263a; outline-offset: 2px; }
-svg :focus-visible { outline-offset: 3px; }
+:focus-visible { outline: 2px solid #222; outline-offset: 2px; }
 
-/* Revision cloud: the draftsman's scalloped outline drawn around anything that changed between issues. */
-@keyframes cloud-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-.rev-cloud { stroke-dasharray: 1; animation: cloud-draw 900ms ease-out both; }
-@keyframes ghost-in { from { opacity: 0; } to { opacity: 1; } }
-.rev-ghost { animation: ghost-in 500ms ease-out 700ms both; }
-@keyframes row-flash { 0%, 60% { background: #0072b222; } 100% { background: transparent; } }
+/* A changed pin sends out two rings; the colour is the new outcome. */
+@keyframes ring { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(3.2); opacity: 0; } }
+.pin-ring { transform-box: fill-box; transform-origin: center; animation: ring 1.5s ease-out 3; }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+.pop-in { animation: pop-in 160ms ease-out both; }
+@keyframes sheet-in { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet-in { animation: sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes row-flash { 0%, 60% { background: #0072b214; } 100% { background: transparent; } }
 .row-flash { animation: row-flash 2.4s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rev-cloud, .rev-ghost, .row-flash { animation: none; }
+  .pin-ring, .pop-in, .sheet-in, .row-flash { animation: none; }
+  .pin-ring { display: none; }
 }
