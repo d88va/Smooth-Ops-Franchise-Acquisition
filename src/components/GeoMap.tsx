@@ -11,6 +11,7 @@ const H = 800;
 const STATE = geo as unknown as GeoJSON.FeatureCollection<GeoJSON.MultiPolygon, { district: string }>;
 const INK = '#222222';
 const MUTE = '#6A6A6A';
+const BRAND = '#3F3BB5';
 
 interface Props {
   ds: Dataset;
@@ -142,7 +143,7 @@ export function GeoMap({ ds, result, prev, focus, selected, changed, visible, la
   const nChanged = changed.length;
 
   return (
-    <div ref={wrap} className="relative h-full w-full select-none overflow-hidden bg-[#EEF1F2]">
+    <div ref={wrap} className="relative h-full w-full select-none overflow-hidden bg-[#E6ECF5]">
       <svg viewBox={inset ? `${W / 2 - 180} ${H / 2 - 180} 360 360` : `0 0 ${W} ${H}`} className="h-full w-full" role="group" aria-label={`Map of Karnataka franchise territories${cityFocus ? ', zoomed into ' + cityFocus.name : ''}. Pin positions are approximate.`}>
         <defs>
           <filter id={id('sh')} x="-50%" y="-50%" width="200%" height="200%">
@@ -169,11 +170,11 @@ export function GeoMap({ ds, result, prev, focus, selected, changed, visible, la
             return (
               <g key={b.key} onClick={() => clickable && onFocus?.(b.city as string)} style={{ cursor: clickable ? 'zoom-in' : 'default' }}>
                 <title>{`${b.label}: ${b.open} of ${b.total} slots open${clickable ? '. Click to zoom in.' : ''}`}</title>
-                <circle cx={b.x} cy={b.y} r={r} fill={INK} fillOpacity={b.open > 0 ? 0.07 : 0.025} stroke={INK} strokeOpacity={0.45} strokeWidth={zoom ? 1.6 : 1.1} strokeDasharray={b.open > 0 ? undefined : '3 3'} />
+                <circle cx={b.x} cy={b.y} r={r} fill={BRAND} fillOpacity={b.open > 0 ? 0.1 : 0.03} stroke={BRAND} strokeOpacity={0.6} strokeWidth={zoom ? 1.6 : 1.1} strokeDasharray={b.open > 0 ? undefined : '3 3'} />
                 {!inset && zoom > 0 && (
                   <g transform={`translate(${b.x} ${b.y - r - 14})`}>
                     <rect x={-58} y={-12} width={116} height={24} rx={12} fill="#fff" filter={`url(#${id('sh')})`} />
-                    <text textAnchor="middle" y={4.5} fontSize={12} fontWeight={600} fill={INK} fontFamily="Figtree, sans-serif">{b.label}, {b.open} of {b.total} open</text>
+                    <text textAnchor="middle" y={4.5} fontSize={12} fontWeight={600} fill={BRAND} fontFamily="Figtree, sans-serif">{b.label}, {b.open} of {b.total} open</text>
                   </g>
                 )}
               </g>
@@ -270,7 +271,7 @@ export function GeoMap({ ds, result, prev, focus, selected, changed, visible, la
                 {isChanged && <circle cx={p[0]} cy={p[1]} r={r} fill="none" stroke={c} strokeWidth={3} className="pin-ring" />}
                 {isChanged && <circle cx={p[0]} cy={p[1]} r={r} fill="none" stroke={c} strokeWidth={3} className="pin-ring" style={{ animationDelay: '0.5s' }} />}
                 <g transform={isSel ? `translate(${p[0]} ${p[1]}) scale(1.12) translate(${-p[0]} ${-p[1]})` : undefined}>
-                  <rect x={p[0] - r} y={p[1] - h / 2} width={w} height={h} rx={h / 2} fill={isSel ? INK : '#fff'} filter={`url(#${id('sh')})`} stroke={isChanged ? c : 'none'} strokeWidth={isChanged ? 2.5 : 0} />
+                  <rect x={p[0] - r} y={p[1] - h / 2} width={w} height={h} rx={h / 2} fill={isSel ? BRAND : '#fff'} filter={`url(#${id('sh')})`} stroke={isChanged ? c : 'none'} strokeWidth={isChanged ? 2.5 : 0} />
                   {showId ? (
                     <>
                       <circle cx={p[0]} cy={p[1]} r={r - 3 * u} fill="#fff" />

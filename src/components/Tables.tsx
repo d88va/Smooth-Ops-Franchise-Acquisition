@@ -20,9 +20,9 @@ export function OutcomeTabs() {
             onClick={() => setFilter(i.o ? (on ? { ...filter, outcome: undefined } : { ...filter, outcome: i.o }) : { ...filter, outcome: undefined })}
             aria-pressed={on}
             title={i.o ? `${i.o}: drawn as a ${SHAPE_NAME[i.o]}` : 'Show every applicant'}
-            className={`flex shrink-0 flex-col items-center gap-1 border-b-2 px-4 pb-2 pt-1 text-xs font-semibold ${on ? 'border-ink text-ink' : 'border-transparent text-mute hover:border-line hover:text-ink'}`}
+            className={`flex shrink-0 flex-col items-center gap-1 border-b-2 px-4 pb-2 pt-1 text-xs font-semibold ${on ? 'border-brand text-ink' : 'border-transparent text-mute hover:border-line hover:text-ink'}`}
           >
-            {i.o ? <Mark o={i.o} size={26} /> : <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-wash text-sm font-bold text-ink">{total}</span>}
+            {i.o ? <Mark o={i.o} size={26} /> : <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-tint text-sm font-bold text-brand">{total}</span>}
             <span>{i.label}{i.o ? ` ${i.n}` : ''}</span>
           </button>
         );
@@ -59,7 +59,7 @@ export function ApplicantList() {
           <select aria-label="Filter by territory" value={filter.territory ?? ''} onChange={(e) => setFilter({ ...filter, territory: e.target.value || undefined })} className={field}>
             <option value="">Any territory</option>{ds.territories.map((t) => <option key={t.id}>{t.id}</option>)}
           </select>
-          {any && <button onClick={() => setFilter({})} className="text-sm font-semibold underline underline-offset-4">Show everyone</button>}
+          {any && <button onClick={() => setFilter({})} className="text-sm font-semibold text-brand underline underline-offset-4">Show everyone</button>}
         </div>
       </div>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -72,7 +72,7 @@ export function ApplicantList() {
               <button
                 onClick={() => select(a.id)}
                 aria-pressed={selected === a.id}
-                className={`block h-full w-full rounded-xl bg-white p-4 text-left shadow-card transition-shadow hover:shadow-float ${selected === a.id ? 'outline outline-2 outline-ink' : ''} ${isChanged ? 'row-flash' : ''}`}
+                className={`block h-full w-full rounded-xl bg-white p-4 text-left shadow-card transition-shadow hover:shadow-float ${selected === a.id ? 'outline outline-2 outline-brand' : ''} ${isChanged ? 'row-flash' : ''}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -108,7 +108,7 @@ export function TerritoryCards() {
           </div>
           <div className="mt-2 flex gap-1" role="img" aria-label={`${t.filled} of ${t.territory.slots} slots filled`}>
             {Array.from({ length: Math.max(t.territory.slots, 0) }).map((_, i) => (
-              <span key={i} className="h-2.5 flex-1 rounded-full" style={{ background: i < t.filled ? '#222' : '#DDD' }} />
+              <span key={i} className="h-2.5 flex-1 rounded-full" style={{ background: i < t.filled ? '#3F3BB5' : '#DDD' }} />
             ))}
             {t.territory.slots === 0 && <span className="text-sm text-mute">Closed: no open slots</span>}
           </div>
@@ -119,7 +119,7 @@ export function TerritoryCards() {
               {t.ranking.map((x, i) => (
                 <li key={x.id} className="flex items-center gap-2 border-t border-line py-1.5">
                   <span className="w-4 text-mute">{i + 1}</span>
-                  <button onClick={() => select(x.id)} className="font-semibold underline underline-offset-2">{x.id}</button>
+                  <button onClick={() => select(x.id)} className="font-semibold text-brand underline underline-offset-2">{x.id}</button>
                   <span className="text-mute">{x.score}</span>
                   <Badge o={x.outcome} small />
                   <span className="truncate text-xs text-mute">{x.note}</span>
@@ -150,7 +150,7 @@ export function DataQuality() {
       <ul>
         {rows.map(({ a, flags }) => (
           <li key={a.id} className="border-t border-line py-3">
-            <div className="mb-1 flex flex-wrap items-center gap-2"><button onClick={() => select(a.id)} className="font-semibold underline underline-offset-2">{a.id}</button><span>{a.name}</span><Badge o={r.decisions[a.id].outcome} small /></div>
+            <div className="mb-1 flex flex-wrap items-center gap-2"><button onClick={() => select(a.id)} className="font-semibold text-brand underline underline-offset-2">{a.id}</button><span>{a.name}</span><Badge o={r.decisions[a.id].outcome} small /></div>
             <ul className="space-y-0.5 text-sm">
               {flags.map((f, i) => <li key={i} className="flex gap-2"><span className="w-16 shrink-0 font-semibold">{f.severity === 'error' ? 'Error' : f.severity === 'warn' ? 'Warning' : 'Note'}</span>{f.message}</li>)}
             </ul>

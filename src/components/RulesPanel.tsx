@@ -18,11 +18,11 @@ export function RulesGlance({ onMore }: { onMore: () => void }) {
     <Card>
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-lg font-semibold">How decisions are made</h2>
-        <button onClick={onMore} className="text-sm font-semibold underline underline-offset-4">See all the rules</button>
+        <button onClick={onMore} className="text-sm font-semibold text-brand underline underline-offset-4">See all the rules</button>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-3">
         {items.map(([k, v]) => (
-          <div key={k} className="rounded-lg bg-wash p-3">
+          <div key={k} className="rounded-lg bg-tint p-3">
             <dt className="text-xs text-mute">{k}</dt>
             <dd className="mt-0.5 text-sm font-semibold">{v}</dd>
           </div>

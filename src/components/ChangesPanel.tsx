@@ -9,7 +9,7 @@ export function ChangesCard() {
   const last = log[log.length - 1];
   if (!diff || !last) {
     return (
-      <Card className="bg-wash shadow-none">
+      <Card className="bg-tint shadow-none">
         <h2 className="text-lg font-semibold">What changed and why</h2>
         <p className="mt-1 max-w-[56ch] text-mute">Nothing has changed yet. Try “APP-012 found a ground-floor space” in the search bar above. Every pin that moves pulses on the map, and this card says why.</p>
       </Card>
@@ -30,16 +30,16 @@ export function ChangesCard() {
       {diff.changes.length === 0 && <p className="mt-3">No decision changed. This update did not affect any outcome or pin.</p>}
       <ul className="mt-3 space-y-3">
         {diff.changes.map((c) => (
-          <li key={c.id} className="rounded-xl bg-wash p-4">
+          <li key={c.id} className="rounded-xl bg-tint p-4">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <button onClick={() => select(c.id)} className="font-semibold underline underline-offset-4">{c.id}</button>
+              <button onClick={() => select(c.id)} className="font-semibold text-brand underline underline-offset-4">{c.id}</button>
               <Badge o={c.from} small />
               <span className="text-mute">became</span>
               <Badge o={c.to} small />
               <span className="ml-auto text-xs text-mute">score {c.scoreFrom} to {c.scoreTo}</span>
             </div>
             <p className="mt-2 text-[15px]">{c.primary}</p>
-            {c.knockOn && <p className="mt-2 rounded-lg bg-white p-3 text-[15px] shadow-card"><b className="font-semibold">Knock-on effect.</b> {c.knockOn}</p>}
+            {c.knockOn && <p className="mt-2 rounded-lg border-l-4 border-brand bg-white p-3 text-[15px] shadow-card"><b className="font-semibold">Knock-on effect.</b> {c.knockOn}</p>}
           </li>
         ))}
       </ul>
@@ -70,7 +70,7 @@ export function ScenarioLog() {
         {!Object.keys(overrides).length ? <p className="text-mute">None. An override lets the expansion team correct the engine and records why.</p> : (
           <ul className="space-y-2">
             {Object.entries(overrides).map(([id, o]) => (
-              <li key={id} className="border-t border-line pt-2"><button onClick={() => select(id)} className="font-semibold underline underline-offset-2">{id}</button> set to {o.outcome}: {o.reason}</li>
+              <li key={id} className="border-t border-line pt-2"><button onClick={() => select(id)} className="font-semibold text-brand underline underline-offset-2">{id}</button> set to {o.outcome}: {o.reason}</li>
             ))}
           </ul>
         )}

@@ -3,7 +3,7 @@ import { sampleDataset } from '../data/sample';
 import { parseWorkbook, type Outcome } from '../engine';
 import { saveUpload } from '../state/persist';
 import { loadDataset, setError, setSave, useStore } from '../state/store';
-import { btn, btnPrimary, Icon, Mark } from './ui';
+import { btn, btnPrimary, Icon, Mark, OUTCOME_COLOR } from './ui';
 
 const MEANING: [Outcome, string][] = [
   ['Approved', 'Gets a store in the territory. Next steps and a training plan follow.'],
@@ -49,7 +49,7 @@ export function UploadScreen() {
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col px-5 pb-12 pt-6 sm:px-8">
       <p className="flex items-center gap-2 text-lg font-bold">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-white"><Icon name="store" size={18} /></span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white"><Icon name="store" size={18} /></span>
         Franchise partner decisions
       </p>
 
@@ -64,9 +64,9 @@ export function UploadScreen() {
         onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => { e.preventDefault(); setDrag(false); void handle(e.dataTransfer.files?.[0]); }}
-        className={`mx-auto mt-10 w-full max-w-2xl rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${drag ? 'border-ink bg-wash' : 'border-line bg-white'}`}
+        className={`mx-auto mt-10 w-full max-w-2xl rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${drag ? 'border-brand bg-tint' : 'border-line bg-white'}`}
       >
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-wash"><Icon name="upload" size={26} /></span>
+        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-tint text-brand"><Icon name="upload" size={26} /></span>
         <p className="mt-4 text-xl font-semibold">{drag ? 'Release to read the file' : 'Drop an Excel file here'}</p>
         <p className="mx-auto mt-1 max-w-[46ch] text-mute">Sheet 1 lists applications and sheet 2 lists territories. Existing stores are already built in.</p>
         <input ref={input} type="file" accept=".xlsx,.xlsm,.xls" className="sr-only" aria-label="Choose an Excel file" onChange={(e) => { void handle(e.target.files?.[0]); e.target.value = ''; }} />
@@ -74,7 +74,7 @@ export function UploadScreen() {
           <button onClick={() => input.current?.click()} disabled={busy} className={btn + ' px-5 py-2.5'}>{busy ? 'Reading the file' : 'Choose a file from this computer'}</button>
           <button onClick={() => loadDataset(sampleDataset(), 'Sample data')} className={btnPrimary}>Use the sample data</button>
         </div>
-        <a href="./sample-applications.xlsx" download className="mt-5 inline-block text-sm font-semibold underline underline-offset-4">Download the Excel template</a>
+        <a href="./sample-applications.xlsx" download className="mt-5 inline-block text-sm font-semibold text-brand underline underline-offset-4">Download the Excel template</a>
       </div>
 
       {error && (
@@ -89,7 +89,7 @@ export function UploadScreen() {
         <h2 id="meaning" className="text-2xl font-bold">What the five outcomes mean</h2>
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {MEANING.map(([o, text]) => (
-            <li key={o} className="rounded-xl bg-white p-4 shadow-card">
+            <li key={o} className="rounded-xl p-4" style={{ background: OUTCOME_COLOR[o] + '14' }}>
               <Mark o={o} size={32} />
               <p className="mt-3 font-semibold">{o}</p>
               <p className="mt-1 text-sm text-mute">{text}</p>

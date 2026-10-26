@@ -36,7 +36,7 @@ export function LayersMenu({ layers, view, setView }: { layers: Layers; view: 'm
             <legend className="mb-2 text-sm font-bold">Show on the map</legend>
             {LAYER_LABELS.map(([k, label]) => (
               <label key={k} className="flex cursor-pointer items-center gap-3 py-1.5 text-sm">
-                <input type="checkbox" checked={layers[k]} onChange={() => toggleLayer(k)} className="h-4 w-4 accent-ink" />
+                <input type="checkbox" checked={layers[k]} onChange={() => toggleLayer(k)} className="h-4 w-4 accent-brand" />
                 {label}
               </label>
             ))}
@@ -45,7 +45,7 @@ export function LayersMenu({ layers, view, setView }: { layers: Layers; view: 'm
             <legend className="mb-2 text-sm font-bold">View</legend>
             {([['map', 'Map'], ['tiles', 'Grid of pins']] as const).map(([v, label]) => (
               <label key={v} className="flex cursor-pointer items-center gap-3 py-1.5 text-sm">
-                <input type="radio" name="view" checked={view === v} onChange={() => setView(v)} className="h-4 w-4 accent-ink" />
+                <input type="radio" name="view" checked={view === v} onChange={() => setView(v)} className="h-4 w-4 accent-brand" />
                 {label}
               </label>
             ))}

@@ -86,7 +86,7 @@ function Dashboard() {
       <header className="grid grid-cols-[minmax(0,1fr)] items-center gap-3 px-4 pb-3 pt-4 sm:px-8 lg:grid-cols-[1fr_auto_1fr]">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-lg font-bold">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ink text-white"><Icon name="store" size={18} /></span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-white"><Icon name="store" size={18} /></span>
             <span className="truncate">Franchise partner decisions</span>
           </p>
           <p className="mt-0.5 truncate text-xs text-mute">{fileName}: {ds.applications.length} applications, {ds.territories.length} territories, {ds.stores.length} existing stores</p>
@@ -135,7 +135,7 @@ function Dashboard() {
               {canCompare && (
                 <div role="group" aria-label="Compare the map before and after the last change" className="flex rounded-full bg-white p-1 shadow-float">
                   {[['Before', true], ['After', false]].map(([label, b]) => (
-                    <button key={label as string} onClick={() => setShowBefore(b as boolean)} aria-pressed={showBefore === b} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${showBefore === b ? 'bg-ink text-white' : 'hover:bg-wash'}`}>{label as string}</button>
+                    <button key={label as string} onClick={() => setShowBefore(b as boolean)} aria-pressed={showBefore === b} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${showBefore === b ? 'bg-brand text-white' : 'hover:bg-tint'}`}>{label as string}</button>
                   ))}
                 </div>
               )}

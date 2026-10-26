@@ -13,7 +13,7 @@ export function QueryBar() {
   };
   return (
     <div className="w-full min-w-0 max-w-[760px]">
-      <form onSubmit={(e) => { e.preventDefault(); submit(q); }} className="flex items-center rounded-full border border-line bg-white py-1.5 pl-6 pr-1.5 shadow-float focus-within:outline focus-within:outline-2 focus-within:outline-ink">
+      <form onSubmit={(e) => { e.preventDefault(); submit(q); }} className="flex items-center rounded-full border border-line bg-white py-1.5 pl-6 pr-1.5 shadow-float focus-within:outline focus-within:outline-2 focus-within:outline-brand">
         <div className="min-w-0 flex-1">
           <label htmlFor="ask" className="block text-xs font-bold leading-tight">Ask a question or add a new fact</label>
           <input
@@ -25,11 +25,11 @@ export function QueryBar() {
             autoComplete="off"
           />
         </div>
-        <button aria-label="Ask" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink text-white hover:bg-black"><Icon name="search" size={20} /></button>
+        <button aria-label="Ask" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand text-white hover:bg-brand-dark"><Icon name="search" size={20} /></button>
       </form>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="Examples to try">
         {EXAMPLES.map((e) => (
-          <button key={e} onClick={() => submit(e)} className="shrink-0 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium hover:border-ink">{e}</button>
+          <button key={e} onClick={() => submit(e)} className="shrink-0 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium hover:border-brand hover:bg-tint">{e}</button>
         ))}
       </div>
     </div>
@@ -43,7 +43,7 @@ export function QueryAnswer() {
     <div role="status" className="pop-in rounded-xl bg-white p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <p className="text-lg font-semibold leading-snug">{answer.title}</p>
-        {answer.focusId && <button onClick={() => select(answer.focusId as string)} className="shrink-0 text-sm font-semibold underline underline-offset-4">Open {answer.focusId}</button>}
+        {answer.focusId && <button onClick={() => select(answer.focusId as string)} className="shrink-0 text-sm font-semibold text-brand underline underline-offset-4">Open {answer.focusId}</button>}
       </div>
       <div className="mt-2 max-w-[70ch] space-y-1.5 text-[15px]">
         {answer.lines.map((l, i) => <p key={i}>{l}</p>)}

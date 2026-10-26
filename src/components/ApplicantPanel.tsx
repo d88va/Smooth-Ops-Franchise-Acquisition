@@ -59,7 +59,7 @@ export function ApplicantPanel({ onClose }: { onClose: () => void }) {
             <ul className="list-disc space-y-1 pl-5">
               {d.reasons.slice(0, 3).map((r, i) => <li key={i}>{r}</li>)}
             </ul>
-            {d.conditions.length > 0 && <p className="mt-3 rounded-lg bg-wash p-3"><b className="font-semibold">Conditions.</b> {d.conditions.join('; ')}</p>}
+            {d.conditions.length > 0 && <p className="mt-3 rounded-lg bg-tint p-3"><b className="font-semibold">Conditions.</b> {d.conditions.join('; ')}</p>}
           </Section>
 
           {d.outcome !== 'Approved' && cfs.length > 0 && (
@@ -74,7 +74,7 @@ export function ApplicantPanel({ onClose }: { onClose: () => void }) {
             <ol className="space-y-2">
               {d.nextSteps.map((s, i) => (
                 <li key={i} className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-wash text-xs font-bold">{i + 1}</span>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-tint text-xs font-bold text-brand">{i + 1}</span>
                   <span className="flex-1">{s.text}</span>
                   {s.dueWeek !== undefined && <span className="shrink-0 text-sm font-semibold">{weekDate(s.dueWeek)}</span>}
                 </li>
@@ -87,9 +87,9 @@ export function ApplicantPanel({ onClose }: { onClose: () => void }) {
               <p className="font-semibold">{d.plan.track}</p>
               <p className="text-sm text-mute">In {d.plan.language}. Store opens {weekDate(d.plan.openWeek)}{d.plan.redated ? ' (date moved)' : ''}.</p>
               <details className="mt-2">
-                <summary className="cursor-pointer text-sm font-semibold underline underline-offset-4">See modules and milestones</summary>
+                <summary className="cursor-pointer text-sm font-semibold text-brand underline underline-offset-4">See modules and milestones</summary>
                 <ul className="mt-3 flex flex-wrap gap-2">
-                  {d.plan.modules.map((m) => <li key={m} className="rounded-full bg-wash px-3 py-1 text-sm">{m}</li>)}
+                  {d.plan.modules.map((m) => <li key={m} className="rounded-full bg-tint px-3 py-1 text-sm">{m}</li>)}
                 </ul>
                 <ol className="mt-3">
                   {d.plan.milestones.map((m) => (
@@ -114,7 +114,7 @@ export function ApplicantPanel({ onClose }: { onClose: () => void }) {
                   {d.breakdown.map((b) => (
                     <div key={b.key}>
                       <div className="flex justify-between text-sm"><span className="font-medium">{b.label}</span><span className="font-semibold">{b.max > 0 ? `${b.score} of ${b.max}` : b.score}</span></div>
-                      {b.max > 0 && <div className="mt-1 h-1.5 rounded-full bg-line"><div className="h-full rounded-full bg-ink" style={{ width: `${(b.score / b.max) * 100}%` }} /></div>}
+                      {b.max > 0 && <div className="mt-1 h-1.5 rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${(b.score / b.max) * 100}%` }} /></div>}
                       <div className="mt-0.5 text-sm text-mute">{b.note}</div>
                     </div>
                   ))}

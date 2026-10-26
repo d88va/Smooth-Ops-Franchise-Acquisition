@@ -10,6 +10,9 @@ export default {
         mute: '#6A6A6A',
         line: '#DDDDDD',
         wash: '#F7F7F7',
+        // Brand: used only for interface chrome (buttons, links, focus, selection, territories). Never for outcomes.
+        brand: { DEFAULT: '#3F3BB5', dark: '#2F2C96' },
+        tint: '#F0EFFB',
         // Okabe-Ito: distinguishable under the common kinds of colour blindness. Always paired with a shape.
         o: { approved: '#009E73', hold: '#E69F00', waitlist: '#0072B2', redirect: '#CC79A7', decline: '#D55E00' },
       },

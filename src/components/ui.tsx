@@ -74,7 +74,7 @@ export function weekDate(w: number | undefined): string {
 
 export function Badge({ o, small }: { o: Outcome; small?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-wash font-semibold ${small ? 'py-0.5 pl-1.5 pr-2.5 text-xs' : 'py-1 pl-2 pr-3 text-sm'}`}>
+    <span style={{ background: OUTCOME_COLOR[o] + '1F' }} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-semibold ${small ? 'py-0.5 pl-1.5 pr-2.5 text-xs' : 'py-1 pl-2 pr-3 text-sm'}`}>
       <Mark o={o} size={small ? 14 : 18} />
       {o}
     </span>
@@ -94,9 +94,9 @@ export function SectionTitle({ children, right }: { children: React.ReactNode; r
   );
 }
 
-export const btn = 'inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold hover:border-ink disabled:opacity-40 disabled:hover:border-line';
-export const btnPrimary = 'inline-flex items-center justify-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-40';
-export const field = 'rounded-lg border border-line bg-white px-3 py-2 text-sm hover:border-ink';
+export const btn = 'inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold hover:border-brand hover:text-brand disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink';
+export const btnPrimary = 'inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-40';
+export const field = 'rounded-lg border border-line bg-white px-3 py-2 text-sm hover:border-brand';
 
 /** Centered dialog with a close button at the top left and the title in the middle. */
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
