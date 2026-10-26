@@ -57,31 +57,26 @@ export function ApplicantPanel({ onClose }: { onClose: () => void }) {
 
           <Section title="Why">
             <ul className="list-disc space-y-1 pl-5">
-              {d.reasons.map((r, i) => <li key={i}>{r}</li>)}
+              {d.reasons.slice(0, 3).map((r, i) => <li key={i}>{r}</li>)}
             </ul>
-            <p className="mt-2 text-sm text-mute">Decided by: {d.decidedBy}</p>
             {d.conditions.length > 0 && <p className="mt-3 rounded-lg bg-wash p-3"><b className="font-semibold">Conditions.</b> {d.conditions.join('; ')}</p>}
-            {d.overridden && (
-              <p className="mt-3 rounded-lg bg-wash p-3"><b className="font-semibold">Manual override {d.overridden.applied ? 'applied' : 'not applied'}.</b> {d.overridden.outcome}: “{d.overridden.reason}”. {d.overridden.note}</p>
-            )}
           </Section>
 
-          {d.outcome !== 'Approved' && (
-            <Section title="This applicant would be approved if">
+          {d.outcome !== 'Approved' && cfs.length > 0 && (
+            <Section title="What would change this">
               <ul className="list-disc space-y-1 pl-5">
-                {cfs.map((c, i) => <li key={i}>{c.text}</li>)}
+                {cfs.slice(0, 2).map((c, i) => <li key={i}>{c.text}</li>)}
               </ul>
-              <p className="mt-2 text-sm text-mute">Each option was tested by running the engine again on a changed copy of the data.</p>
             </Section>
           )}
 
-          <Section title="What the applicant must do next">
-            <ol className="space-y-3">
+          <Section title="Next steps">
+            <ol className="space-y-2">
               {d.nextSteps.map((s, i) => (
                 <li key={i} className="flex gap-3">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-wash text-xs font-bold">{i + 1}</span>
                   <span className="flex-1">{s.text}</span>
-                  <span className="shrink-0 text-right text-sm text-mute">{s.when}{s.dueWeek !== undefined && <span className="block font-semibold text-ink">by {weekDate(s.dueWeek)}</span>}</span>
+                  {s.dueWeek !== undefined && <span className="shrink-0 text-sm font-semibold">{weekDate(s.dueWeek)}</span>}
                 </li>
               ))}
             </ol>
@@ -90,57 +85,68 @@ export function ApplicantPanel({ onClose }: { onClose: () => void }) {
           {d.plan && (
             <Section title="Training plan">
               <p className="font-semibold">{d.plan.track}</p>
-              <p className="text-sm text-mute">Taught in {d.plan.language}. Store opens {weekDate(d.plan.openWeek)}{d.plan.redated ? ' (date moved)' : ''}.</p>
-              <ul className="mt-3 flex flex-wrap gap-2">
-                {d.plan.modules.map((m) => <li key={m} className="rounded-full bg-wash px-3 py-1 text-sm">{m}</li>)}
-              </ul>
-              <ol className="mt-4">
-                {d.plan.milestones.map((m) => (
-                  <li key={m.name} className="flex items-baseline gap-3 border-t border-line py-2">
-                    <span className="w-28 shrink-0 text-sm font-semibold">{weekDate(m.dueWeek)}</span>
-                    <span>{m.name}{m.note ? <span className="text-mute"> ({m.note})</span> : null}</span>
-                  </li>
-                ))}
-              </ol>
-              <p className={`mt-3 rounded-lg p-3 ${d.plan.redated ? 'bg-wash' : 'text-mute'}`}>{d.plan.feasibility}</p>
+              <p className="text-sm text-mute">In {d.plan.language}. Store opens {weekDate(d.plan.openWeek)}{d.plan.redated ? ' (date moved)' : ''}.</p>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm font-semibold underline underline-offset-4">See modules and milestones</summary>
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {d.plan.modules.map((m) => <li key={m} className="rounded-full bg-wash px-3 py-1 text-sm">{m}</li>)}
+                </ul>
+                <ol className="mt-3">
+                  {d.plan.milestones.map((m) => (
+                    <li key={m.name} className="flex items-baseline gap-3 border-t border-line py-2">
+                      <span className="w-28 shrink-0 text-sm font-semibold">{weekDate(m.dueWeek)}</span>
+                      <span>{m.name}{m.note ? <span className="text-mute"> ({m.note})</span> : null}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-2 text-sm text-mute">{d.plan.feasibility}</p>
+              </details>
             </Section>
           )}
 
-          {d.breakdown.length > 0 && (
-            <Section title="How the score adds up">
-              <div className="space-y-3">
-                {d.breakdown.map((b) => (
-                  <div key={b.key}>
-                    <div className="flex justify-between text-sm"><span className="font-medium">{b.label}</span><span className="font-semibold">{b.max > 0 ? `${b.score} of ${b.max}` : b.score}</span></div>
-                    {b.max > 0 && <div className="mt-1 h-1.5 rounded-full bg-line"><div className="h-full rounded-full bg-ink" style={{ width: `${(b.score / b.max) * 100}%` }} /></div>}
-                    <div className="mt-0.5 text-sm text-mute">{b.note}</div>
-                  </div>
-                ))}
+          <details className="border-t border-line py-5">
+            <summary className="cursor-pointer text-lg font-semibold">More details</summary>
+            <div className="mt-4 space-y-6">
+              <div>
+                <h4 className="mb-1 font-semibold">How the score adds up</h4>
+                <p className="mb-2 text-sm text-mute">Decided by: {d.decidedBy}</p>
+                <div className="space-y-3">
+                  {d.breakdown.map((b) => (
+                    <div key={b.key}>
+                      <div className="flex justify-between text-sm"><span className="font-medium">{b.label}</span><span className="font-semibold">{b.max > 0 ? `${b.score} of ${b.max}` : b.score}</span></div>
+                      {b.max > 0 && <div className="mt-1 h-1.5 rounded-full bg-line"><div className="h-full rounded-full bg-ink" style={{ width: `${(b.score / b.max) * 100}%` }} /></div>}
+                      <div className="mt-0.5 text-sm text-mute">{b.note}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </Section>
-          )}
-
-          {d.flags.length > 0 && (
-            <Section title="Problems found in the data">
-              <ul className="space-y-1">
-                {d.flags.map((f, i) => (
-                  <li key={i} className="flex gap-2"><span className="w-16 shrink-0 text-sm font-semibold">{f.severity === 'error' ? 'Error' : f.severity === 'warn' ? 'Warning' : 'Note'}</span>{f.message}</li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          <Section title="Override this decision">
-            <div className="flex flex-wrap gap-2">
-              <select value={ov} onChange={(e) => setOv(e.target.value as Outcome)} className={field} aria-label="Outcome to set">
-                {OUTCOMES.map((o) => <option key={o}>{o}</option>)}
-              </select>
-              <input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Reason, kept in the log" aria-label="Reason for the override" className={field + ' min-w-0 flex-1'} />
-              <button disabled={!why.trim()} onClick={() => { setOverride(a.id, ov, why.trim()); setWhy(''); }} className={btnPrimary}>Apply override</button>
-              {overrides[a.id] && <button onClick={() => setOverride(a.id, null, '')} className={btn}>Remove override</button>}
+              {d.flags.length > 0 && (
+                <div>
+                  <h4 className="mb-1 font-semibold">Problems found in the data</h4>
+                  <ul className="space-y-1">
+                    {d.flags.map((f, i) => (
+                      <li key={i} className="flex gap-2"><span className="w-16 shrink-0 text-sm font-semibold">{f.severity === 'error' ? 'Error' : f.severity === 'warn' ? 'Warning' : 'Note'}</span>{f.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {d.overridden && (
+                <p className="rounded-lg bg-wash p-3"><b className="font-semibold">Manual override {d.overridden.applied ? 'applied' : 'not applied'}.</b> {d.overridden.outcome}: “{d.overridden.reason}”. {d.overridden.note}</p>
+              )}
+              <div>
+                <h4 className="mb-2 font-semibold">Override this decision</h4>
+                <div className="flex flex-wrap gap-2">
+                  <select value={ov} onChange={(e) => setOv(e.target.value as Outcome)} className={field} aria-label="Outcome to set">
+                    {OUTCOMES.map((o) => <option key={o}>{o}</option>)}
+                  </select>
+                  <input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Reason, kept in the log" aria-label="Reason for the override" className={field + ' min-w-0 flex-1'} />
+                  <button disabled={!why.trim()} onClick={() => { setOverride(a.id, ov, why.trim()); setWhy(''); }} className={btnPrimary}>Apply override</button>
+                  {overrides[a.id] && <button onClick={() => setOverride(a.id, null, '')} className={btn}>Remove override</button>}
+                </div>
+                <p className="mt-2 text-sm text-mute">The engine still allows only one store per pin and respects territory slot limits.</p>
+              </div>
             </div>
-            <p className="mt-2 text-sm text-mute">The engine still allows only one store per pin and respects territory slot limits. An override that breaks either is refused.</p>
-          </Section>
+          </details>
         </div>
       )}
     </div>

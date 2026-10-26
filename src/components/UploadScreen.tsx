@@ -97,10 +97,6 @@ export function UploadScreen() {
           ))}
         </ul>
       </section>
-
-      <p className="mt-10 max-w-[64ch] text-sm text-mute">
-        Your file is read in this browser. If cloud storage is available, a copy is also saved so you can share a link to it. Decisions come from fixed rules, not from an AI model.
-      </p>
     </main>
   );
 }
