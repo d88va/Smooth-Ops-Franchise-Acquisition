@@ -2,26 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+:root { color-scheme: light; }
 html, body, #root { min-height: 100%; }
-body { @apply bg-ink-950 font-sans text-slate-200 antialiased; }
-::selection { background: #f5b94255; }
-* { scrollbar-width: thin; scrollbar-color: #2a3544 transparent; }
-button:focus-visible, select:focus-visible, input:focus-visible, tr:focus-visible { outline: 2px solid #f5b942; outline-offset: 1px; }
+body { @apply bg-paper font-sans text-[15px] leading-relaxed text-ink antialiased; }
+h1, h2, h3, h4 { @apply font-cond; }
+::selection { background: #0072b233; }
+* { scrollbar-width: thin; scrollbar-color: #b4bfbd transparent; }
+button, select, input { font: inherit; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid #17263a; outline-offset: 2px; }
+svg :focus-visible { outline-offset: 3px; }
 
-.bg-grid {
-  background-image: linear-gradient(#1c253133 1px, transparent 1px), linear-gradient(90deg, #1c253133 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
-}
-
-@keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.95; } 100% { transform: scale(4.2); opacity: 0; } }
-.pulse-ring { transform-box: fill-box; transform-origin: center; animation: pulse-ring 1.4s ease-out 4; }
-@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.fade-in { animation: fade-in 260ms ease-out both; }
-@keyframes row-flash { 0%, 60% { background: #f5b94222; } 100% { background: transparent; } }
+/* Revision cloud: the draftsman's scalloped outline drawn around anything that changed between issues. */
+@keyframes cloud-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.rev-cloud { stroke-dasharray: 1; animation: cloud-draw 900ms ease-out both; }
+@keyframes ghost-in { from { opacity: 0; } to { opacity: 1; } }
+.rev-ghost { animation: ghost-in 500ms ease-out 700ms both; }
+@keyframes row-flash { 0%, 60% { background: #0072b222; } 100% { background: transparent; } }
 .row-flash { animation: row-flash 2.4s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse-ring, .fade-in, .row-flash { animation: none; }
+  .rev-cloud, .rev-ghost, .row-flash { animation: none; }
 }

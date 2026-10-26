@@ -1,13 +1,43 @@
 import type { Outcome } from '../engine';
 
+/** Okabe-Ito hues. Colour is never the only cue: every outcome also has its own shape and glyph. */
 export const OUTCOME_COLOR: Record<Outcome, string> = {
-  Approved: '#3ddc97',
-  Hold: '#f5b942',
-  Waitlist: '#5aa9ff',
-  Redirect: '#b583ff',
-  Decline: '#ff5d6c',
+  Approved: '#009E73',
+  Hold: '#E69F00',
+  Waitlist: '#0072B2',
+  Redirect: '#CC79A7',
+  Decline: '#D55E00',
 };
-export const PRIORITY_COLOR = { High: '#ff8a4c', Medium: '#e8c547', Low: '#6c8cae' } as const;
+const GLYPH: Record<Outcome, string> = { Approved: '#fff', Hold: '#17263A', Waitlist: '#fff', Redirect: '#17263A', Decline: '#fff' };
+export const SHAPE_NAME: Record<Outcome, string> = { Approved: 'circle with a tick', Hold: 'square with two bars', Waitlist: 'triangle', Redirect: 'diamond with an arrow', Decline: 'octagon with a cross' };
+export const PRIORITY_COLOR = { High: '#17263A', Medium: '#3F5F80', Low: '#6B7F93' } as const;
+
+/** Marker drawn in a 20-unit box centred on (0,0). Reused inside the map and inline in text. */
+export function MarkShape({ o, x = 0, y = 0, size = 20, outline = '#17263A' }: { o: Outcome; x?: number; y?: number; size?: number; outline?: string }) {
+  const c = OUTCOME_COLOR[o];
+  const g = GLYPH[o];
+  const body =
+    o === 'Approved' ? <circle r={9} fill={c} stroke={outline} strokeWidth={1.4} /> :
+    o === 'Hold' ? <rect x={-8.5} y={-8.5} width={17} height={17} fill={c} stroke={outline} strokeWidth={1.4} /> :
+    o === 'Waitlist' ? <polygon points="0,-10 10,8 -10,8" fill={c} stroke={outline} strokeWidth={1.4} strokeLinejoin="round" /> :
+    o === 'Redirect' ? <polygon points="0,-10.5 10.5,0 0,10.5 -10.5,0" fill={c} stroke={outline} strokeWidth={1.4} /> :
+    <polygon points="-3.9,-9.4 3.9,-9.4 9.4,-3.9 9.4,3.9 3.9,9.4 -3.9,9.4 -9.4,3.9 -9.4,-3.9" fill={c} stroke={outline} strokeWidth={1.4} />;
+  const glyph =
+    o === 'Approved' ? <path d="M-4 0.5 L-1 3.5 L4.5 -3" fill="none" stroke={g} strokeWidth={2} /> :
+    o === 'Hold' ? <path d="M-2.5 -4 V4 M2.5 -4 V4" stroke={g} strokeWidth={2} /> :
+    o === 'Waitlist' ? <path d="M-3.5 5 H3.5 M-2.2 1.6 H2.2" stroke={g} strokeWidth={1.6} /> :
+    o === 'Redirect' ? <path d="M-5 0 H4 M0.8 -3.6 L4.4 0 L0.8 3.6" fill="none" stroke={g} strokeWidth={1.8} /> :
+    <path d="M-3.4 -3.4 L3.4 3.4 M3.4 -3.4 L-3.4 3.4" stroke={g} strokeWidth={2} />;
+  return <g transform={`translate(${x} ${y}) scale(${size / 20})`}>{body}{glyph}</g>;
+}
+
+export function Mark({ o, size = 16 }: { o: Outcome; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="-11 -11 22 22" aria-hidden="true" className="shrink-0">
+      <MarkShape o={o} />
+    </svg>
+  );
+}
 
 /** Calendar date for "N weeks from today" (display only; the engine itself never reads the clock). */
 export function weekDate(w: number | undefined): string {
@@ -18,42 +48,28 @@ export function weekDate(w: number | undefined): string {
 }
 
 export function Badge({ o, small }: { o: Outcome; small?: boolean }) {
-  const c = OUTCOME_COLOR[o];
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border font-medium ${small ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'}`}
-      style={{ color: c, borderColor: c + '55', background: c + '14' }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: c }} />
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap font-medium ${small ? 'text-xs' : 'text-sm'}`}>
+      <Mark o={o} size={small ? 14 : 18} />
       {o}
     </span>
   );
 }
 
-export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-ink-600/70 bg-ink-850/80 ${className}`}>{children}</div>;
+/** A ruled block: a hairline on top and a plain heading. No card, no shadow. */
+export function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <section className={`border-t border-ink pt-3 ${className}`}>{children}</section>;
 }
 
 export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <div className="mb-2 flex items-center justify-between">
-      <h3 className="font-display text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{children}</h3>
+    <div className="mb-2 flex items-baseline justify-between gap-3">
+      <h3 className="text-lg font-semibold leading-tight">{children}</h3>
       {right}
     </div>
   );
 }
 
-export function Legend() {
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
-      {(Object.keys(OUTCOME_COLOR) as Outcome[]).map((o) => (
-        <span key={o} className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: OUTCOME_COLOR[o] }} />
-          {o}
-        </span>
-      ))}
-      <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full border-2 border-slate-300/70" />Store catchment</span>
-      <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: '#e8c54733', border: '1px solid #e8c547' }} />Territory (size = open slots)</span>
-    </div>
-  );
-}
+export const btn = 'border border-ink px-3 py-1.5 text-sm font-medium hover:bg-ink hover:text-paper disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink';
+export const btnPrimary = 'border border-ink bg-ink px-3 py-1.5 text-sm font-medium text-paper hover:bg-contour disabled:opacity-40';
+export const field = 'border border-ink bg-sheet px-2 py-1.5 text-sm';

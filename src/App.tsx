@@ -1,26 +1,26 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { loadShared } from './state/persist';
 import { ApplicantPanel } from './components/ApplicantPanel';
-import { ChangesPanel, ScenarioLog } from './components/ChangesPanel';
+import { BeforeAfter, ChangesPanel, ScenarioLog } from './components/ChangesPanel';
 import { GeoMap } from './components/GeoMap';
-import { LayerCard, StatsCard } from './components/MapOverlays';
+import { LayerToggles } from './components/MapOverlays';
 import { RulesPanel } from './components/RulesPanel';
 import { PinTiles } from './components/PinTiles';
-import { QueryBar } from './components/QueryBar';
-import { ApplicantTable, DataQuality, Kpis, TerritoryCards } from './components/Tables';
+import { QueryAnswer, QueryBar } from './components/QueryBar';
+import { ApplicantTable, DataQuality, OutcomeKey, TerritoryCards } from './components/Tables';
 import { UploadScreen } from './components/UploadScreen';
-import { Legend } from './components/ui';
+import { btn, btnPrimary, field, Mark, MarkShape } from './components/ui';
 import { exportDecisions } from './components/exportXlsx';
+import { CONFIG } from './engine';
 import { CITIES } from './data/cityGeo';
-import { backToUpload, loadDataset, select, setError, setFocus, setSave, setTab, setView, useStore, type Tab } from './state/store';
+import { backToUpload, loadDataset, select, setError, setFocus, setSave, setView, useStore } from './state/store';
 
-const TABS: { k: Tab; label: string }[] = [
-  { k: 'detail', label: 'Applicant' },
-  { k: 'changes', label: 'What changed' },
-  { k: 'territories', label: 'Territories' },
-  { k: 'quality', label: 'Data quality' },
-  { k: 'log', label: 'Log' },
+type Ledger = 'rules' | 'territories' | 'quality' | 'log';
+const LEDGER: { k: Ledger; label: string }[] = [
   { k: 'rules', label: 'Rules' },
+  { k: 'territories', label: 'Territories' },
+  { k: 'quality', label: 'Data problems' },
+  { k: 'log', label: 'Change log' },
 ];
 
 export default function App() {
@@ -32,7 +32,7 @@ export default function App() {
       if (r?.dataset) {
         loadDataset(r.dataset, r.fileName);
         setSave({ status: 'saved', id });
-      } else setError('That shared link could not be loaded (it may have been removed, or storage is offline). You can upload the file again.');
+      } else setError('That shared link could not be loaded. It may have been removed, or cloud storage is offline. Upload the file again to continue.');
     });
   }, []);
   return phase === 'upload' ? <UploadScreen /> : <Dashboard />;
@@ -41,17 +41,19 @@ export default function App() {
 function Dashboard() {
   const ds = useStore((s) => s.ds);
   const result = useStore((s) => s.result);
+  const prev = useStore((s) => s.prev);
   const overrides = useStore((s) => s.overrides);
   const selected = useStore((s) => s.selected);
   const changed = useStore((s) => s.changed);
   const filter = useStore((s) => s.filter);
-  const tab = useStore((s) => s.tab);
   const view = useStore((s) => s.view);
   const focus = useStore((s) => s.focus);
   const layers = useStore((s) => s.layers);
   const fileName = useStore((s) => s.fileName);
   const logN = useStore((s) => s.log.length);
   const save = useStore((s) => s.save);
+  const error = useStore((s) => s.error);
+  const [ledger, setLedger] = useState<Ledger>('rules');
 
   const visible = useMemo(() => {
     if (!filter.outcome && !filter.city && !filter.territory) return null;
@@ -66,86 +68,125 @@ function Dashboard() {
   }, [ds, result, filter]);
 
   return (
-    <div className="mx-auto max-w-[1500px] px-3 pb-10 pt-3 sm:px-5">
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink-800 ring-1 ring-ink-500"><span className="h-3.5 w-3.5 rounded-full border-[3px] border-amber-brand" /></div>
-          <div>
-            <div className="font-display text-base font-semibold leading-tight text-white">Franchise Partner Engine</div>
-            <div className="text-[11px] text-slate-500">{fileName} · {ds.applications.length} applications · {ds.territories.length} territories · {ds.stores.length} existing stores</div>
-          </div>
+    <div className="mx-auto max-w-[1500px] px-3 pb-12 pt-4 sm:px-6">
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-ink pb-3">
+        <div>
+          <h1 className="text-3xl font-semibold leading-none">Franchise partner decisions</h1>
+          <p className="mt-1 text-soft">{fileName}: {ds.applications.length} applications, {ds.territories.length} territories, {ds.stores.length} existing stores</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {save.status !== 'idle' && (
-            <button disabled={!save.id} onClick={() => save.id && void navigator.clipboard?.writeText(location.origin + location.pathname + '?u=' + save.id)} title={save.id ? 'Copy a link that reopens this upload' : undefined} className="rounded-lg border border-ink-600 px-2.5 py-1.5 text-[11px] text-slate-400">
-              {save.status === 'saving' ? 'Saving to cloud...' : save.status === 'saved' ? 'Saved to cloud . copy link' : 'Working offline (not saved)'}
+            <button disabled={!save.id} onClick={() => save.id && void navigator.clipboard?.writeText(location.origin + location.pathname + '?u=' + save.id)} title={save.id ? 'Copy a link that reopens this upload' : undefined} className={btn}>
+              {save.status === 'saving' ? 'Saving a copy' : save.status === 'saved' ? 'Copy link to this file' : 'Not saved online'}
             </button>
           )}
-          <button onClick={() => exportDecisions(ds, result, overrides)} className="rounded-lg bg-amber-brand px-3 py-1.5 text-xs font-semibold text-ink-950 hover:brightness-110">⬇ Export decisions (.xlsx)</button>
-          <button onClick={backToUpload} className="rounded-lg border border-ink-500 px-3 py-1.5 text-xs text-slate-300 hover:text-white">Upload another file</button>
+          <button onClick={() => exportDecisions(ds, result, overrides)} className={btnPrimary}>Download decisions (.xlsx)</button>
+          <button onClick={backToUpload} className={btn}>Upload another file</button>
         </div>
       </header>
 
-      <Kpis />
-
       {result.invariantViolations.length > 0 && (
-        <div role="alert" className="mt-2 rounded-lg border border-o-decline/50 bg-o-decline/10 p-2 text-xs text-red-200">Invariant violation: {result.invariantViolations.join('; ')}</div>
+        <div role="alert" className="mb-3 border border-o-decline border-l-8 bg-sheet p-3">The engine broke one of its own rules: {result.invariantViolations.join('; ')}. Treat these results with care.</div>
       )}
+      {error && <div role="alert" className="mb-3 border border-o-decline border-l-8 bg-sheet p-3">{error}</div>}
 
-      <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.9fr)]">
-        <div className="space-y-3">
-          <QueryBar />
-          <div className="overflow-hidden rounded-xl border border-ink-600/70 bg-ink-900">
-            <div className="flex flex-wrap items-center gap-2 border-b border-ink-700 px-3 py-2">
-              <div className="inline-flex overflow-hidden rounded-lg border border-ink-500 text-xs">
-                {(['map', 'tiles'] as const).map((v) => (
-                  <button key={v} onClick={() => setView(v)} className={`px-3 py-1 ${view === v ? 'bg-ink-600 text-white' : 'text-slate-400 hover:text-white'}`}>{v === 'map' ? 'Bubble map' : 'Pin tiles'}</button>
-                ))}
+      <div className="mb-5"><QueryBar /></div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        <div className="space-y-5">
+
+          <section aria-label="Map of Karnataka">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_200px]">
+              <div className="relative aspect-[17/20] w-full self-start border border-ink bg-sheet" style={{ maxWidth: 'max(420px, calc((100vh - 210px) * 0.85))' }}>
+                {view === 'map' ? (
+                  <>
+                    <GeoMap ds={ds} result={result} prev={prev} focus={focus} selected={selected} changed={changed} visible={visible} layers={layers} onSelect={select} onFocus={setFocus} />
+                    {focus === 'state' && (
+                      <figure className="absolute bottom-[4%] right-[4%] z-10 aspect-square w-[34%] min-w-[110px] border border-ink bg-sheet">
+                        <GeoMap ds={ds} result={result} prev={prev} focus="Bengaluru" selected={selected} changed={changed} visible={visible} layers={layers} onSelect={select} inset />
+                        <figcaption className="absolute left-0 top-0 bg-sheet px-1.5 text-xs font-medium">Bengaluru, enlarged</figcaption>
+                      </figure>
+                    )}
+                  </>
+                ) : (
+                  <PinTiles ds={ds} result={result} selected={selected} onSelect={select} focus={focus} />
+                )}
               </div>
-              <label className="flex items-center gap-1.5 text-xs text-slate-400">
-                Zoom
-                <select value={focus} onChange={(e) => setFocus(e.target.value)} className="rounded-lg border border-ink-500 bg-ink-800 px-2 py-1 text-xs text-slate-200">
-                  <option value="state">Karnataka</option>
-                  {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                </select>
-              </label>
+
+              <div className="space-y-4 text-sm">
+                <div>
+                  <p className="mb-1 text-base font-semibold">Outcomes</p>
+                  <OutcomeKey vertical />
+                  <p className="mt-1 text-soft">Click an outcome to show only those applicants.</p>
+                </div>
+                <LayerToggles layers={layers} />
+                <div className="inline-flex border border-ink" role="group" aria-label="How to show pins">
+                  {(['map', 'tiles'] as const).map((v) => (
+                    <button key={v} onClick={() => setView(v)} aria-pressed={view === v} className={`px-3 py-1 ${view === v ? 'bg-ink text-paper' : 'hover:bg-sheet'}`}>{v === 'map' ? 'Map' : 'Pin grid'}</button>
+                  ))}
+                </div>
+                <label className="block">
+                  Zoom to
+                  <select value={focus} onChange={(e) => setFocus(e.target.value)} className={field + ' mt-0.5 w-full'}>
+                    <option value="state">All of Karnataka</option>
+                    {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                </label>
+                <div>
+                  <p className="font-semibold">Slots</p>
+                  <p>{result.slotsFilled} of {result.slotsTotal} filled</p>
+                  <p className="mt-1 font-semibold">Problems in the data</p>
+                  <p>{result.flagCount} found. <button onClick={() => { setLedger('quality'); location.hash = 'rules'; }} className="underline underline-offset-2">See them</button></p>
+                </div>
+              </div>
             </div>
-            <div className="relative aspect-square max-h-[720px] w-full sm:aspect-[5/4]">
-              {view === 'map' ? (
-                <>
-                  <GeoMap ds={ds} result={result} focus={focus} selected={selected} changed={changed} visible={visible} layers={layers} onSelect={select} onFocus={setFocus} />
-                  <LayerCard layers={layers} focus={focus} />
-                  <StatsCard ds={ds} result={result} />
-                  {focus === 'state' && (
-                    <div className="absolute bottom-3 left-3 z-10 h-[34%] w-[34%] min-w-[150px] overflow-hidden rounded-xl border border-white/15 bg-ink-950 shadow-2xl">
-                      <div className="absolute left-2 top-1 z-10 font-display text-[10px] uppercase tracking-widest text-amber-brand">Bengaluru inset</div>
-                      <GeoMap ds={ds} result={result} focus="Bengaluru" selected={selected} changed={changed} visible={visible} layers={layers} onSelect={select} inset />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <PinTiles ds={ds} result={result} selected={selected} onSelect={select} focus={focus} />
-              )}
+
+            {/* title block, as at the foot of a survey sheet */}
+            <div className="mt-3 grid border border-ink bg-sheet text-sm sm:grid-cols-2">
+              <div className="border-b border-ink p-2 sm:border-r">
+                <p className="font-semibold">How to read the map</p>
+                <ul className="mt-1 space-y-0.5">
+                  <li className="flex items-center gap-2"><Mark o="Approved" size={14} />A filled shape is an applicant. The faint circle around it is the area it would serve.</li>
+                  <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="-8 -8 16 16" aria-hidden="true" className="shrink-0"><circle r="7" fill="none" stroke="#17263A" /><path d="M-4 3V-1M4 3V-1M-4.5 -1L-3.5 -4.5H3.5L4.5 -1Z M-4 3H4" stroke="#17263A" fill="#17263A" strokeWidth="1" /></svg>An existing store and the area it covers.</li>
+                  <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="-8 -8 16 16" aria-hidden="true" className="shrink-0"><circle r="7" fill="#3F5F801a" stroke="#3F5F80" /></svg>A territory. The bigger the circle, the more slots are open.</li>
+                  <li className="flex items-center gap-2"><svg width="22" height="14" viewBox="-12 -8 24 16" aria-hidden="true" className="shrink-0"><MarkShape o="Approved" size={10} /><circle r="8" fill="none" stroke="#009E73" strokeWidth="1.6" strokeDasharray="3 2" /></svg>A scalloped outline marks a pin whose outcome just changed.</li>
+                </ul>
+              </div>
+              <div className="border-b border-ink p-2">
+                <p className="font-semibold">Map positions are approximate</p>
+                <p>Pins sit near each city centre. They are not surveyed locations.</p>
+              </div>
+              <div className="p-2 sm:col-span-2">
+                <p><span className="font-semibold">Rules at a glance.</span> Approved at a score of {CONFIG.approveByPriority.High}, {CONFIG.approveByPriority.Medium} or {CONFIG.approveByPriority.Low} (High, Medium or Low priority territory). Minimum investment ₹{CONFIG.tierMinInvestment[1]}L, ₹{CONFIG.tierMinInvestment[2]}L or ₹{CONFIG.tierMinInvestment[3]}L (tier 1, 2 or 3). Minimum shop {CONFIG.tierMinSize[1]}, {CONFIG.tierMinSize[2]} or {CONFIG.tierMinSize[3]} sq ft. One store per pin. <a href="#rules" onClick={() => setLedger('rules')} className="underline underline-offset-2">Read all the rules</a></p>
+              </div>
             </div>
-            <div className="border-t border-ink-700 px-3 py-2"><Legend /></div>
-          </div>
+          </section>
+
+          <BeforeAfter />
+
+          <section id="rules" aria-label="Rules, territories and data problems" className="scroll-mt-4">
+            <div role="tablist" className="flex flex-wrap border-b border-ink">
+              {LEDGER.map((t) => (
+                <button key={t.k} role="tab" aria-selected={ledger === t.k} onClick={() => setLedger(t.k)} className={`-mb-px border border-b-0 px-4 py-2 text-base font-medium ${ledger === t.k ? 'border-ink bg-sheet' : 'border-transparent text-soft hover:text-ink'}`}>
+                  {t.label}{t.k === 'log' && logN ? ` (${logN})` : ''}
+                </button>
+              ))}
+            </div>
+            <div role="tabpanel" className="border border-t-0 border-ink bg-sheet/60 p-4">
+              {ledger === 'rules' && <RulesPanel />}
+              {ledger === 'territories' && <TerritoryCards />}
+              {ledger === 'quality' && <DataQuality />}
+              {ledger === 'log' && <ScenarioLog />}
+            </div>
+          </section>
+
           <ApplicantTable />
         </div>
 
-        <aside className="lg:sticky lg:top-3 lg:max-h-[calc(100vh-24px)] lg:self-start lg:overflow-auto lg:pr-1">
-          <div className="mb-3 flex gap-1 overflow-x-auto rounded-xl border border-ink-600/70 bg-ink-850/80 p-1" role="tablist">
-            {TABS.map((t) => (
-              <button key={t.k} role="tab" aria-selected={tab === t.k} onClick={() => setTab(t.k)} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs ${tab === t.k ? 'bg-ink-600 text-white' : 'text-slate-400 hover:text-white'}`}>
-                {t.label}{t.k === 'log' && logN ? ` (${logN})` : ''}{t.k === 'changes' && changed.length ? ` · ${changed.length}` : ''}
-              </button>
-            ))}
-          </div>
-          {tab === 'detail' && <ApplicantPanel />}
-          {tab === 'changes' && <ChangesPanel />}
-          {tab === 'territories' && <TerritoryCards />}
-          {tab === 'quality' && <DataQuality />}
-          {tab === 'log' && <ScenarioLog />}
-          {tab === 'rules' && <RulesPanel />}
+        <aside aria-label="Decisions" className="space-y-6 lg:sticky lg:top-3 lg:max-h-[calc(100vh-24px)] lg:self-start lg:overflow-auto lg:pr-2">
+          <QueryAnswer />
+          <ChangesPanel />
+          <ApplicantPanel />
         </aside>
       </div>
     </div>

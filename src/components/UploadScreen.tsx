@@ -1,8 +1,17 @@
 import { useRef, useState } from 'react';
 import { sampleDataset } from '../data/sample';
-import { parseWorkbook } from '../engine';
+import { parseWorkbook, type Outcome } from '../engine';
 import { saveUpload } from '../state/persist';
 import { loadDataset, setError, setSave, useStore } from '../state/store';
+import { btn, btnPrimary, Mark } from './ui';
+
+const MEANING: [Outcome, string][] = [
+  ['Approved', 'Gets a store in the territory. Next steps and a training plan follow.'],
+  ['Hold', 'Close, but one thing is missing, such as space or funds. The applicant can fix it.'],
+  ['Waitlist', 'Qualified, but another applicant won the pin. First in line if it frees up.'],
+  ['Redirect', 'Not this pin, but another open pin fits. The app names it.'],
+  ['Decline', 'Cannot be fixed soon, for example the pin already has a store.'],
+];
 
 export function UploadScreen() {
   const error = useStore((s) => s.error);
@@ -16,7 +25,7 @@ export function UploadScreen() {
     setError(null);
     try {
       if (!/\.(xlsx|xlsm|xls)$/i.test(file.name)) {
-        setError(`"${file.name}" is not an Excel file. Please upload the .xlsx template (Applications + Territories sheets).`);
+        setError(`"${file.name}" is not an Excel file. Save it as .xlsx and drop it here again, or use the sample data.`);
         return;
       }
       const buf = await file.arrayBuffer();
@@ -31,58 +40,66 @@ export function UploadScreen() {
         });
       }
     } catch (e) {
-      setError(`Could not read this file (${(e as Error).message}).`);
+      setError(`Could not read this file (${(e as Error).message}). Check that it opens in Excel, then try again.`);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
-      <div className="pointer-events-none absolute inset-0 bg-grid opacity-60" />
-      <div className="pointer-events-none absolute left-1/2 top-[-20%] h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-amber-brand/10 blur-[120px]" />
-      <div className="relative w-full max-w-2xl">
-        <div className="mb-8">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-ink-500 bg-ink-850/80 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-o-approved" /> Franchise Partner Engine · runs fully in your browser
-          </div>
-          <h1 className="font-display text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl">
-            From first application <span className="text-amber-brand">to open store</span>, decided and explained.
-          </h1>
-          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-slate-400">
-            Upload the applications and territories sheet. Every applicant gets a decision, a plain-language reason, the next steps, and a training plan, and the brand never opens two stores in the same pin code.
-          </p>
-        </div>
+    <main className="mx-auto grid min-h-screen max-w-6xl content-center gap-10 px-4 py-10 sm:px-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <div>
+        <h1 className="max-w-[18ch] text-4xl font-semibold leading-[1.05] sm:text-5xl">Franchise partner decisions</h1>
+        <p className="mt-4 max-w-[58ch] text-lg">
+          Upload an Excel file of applicants and territories. The app decides every applicant, explains why, and plots them on a map of Karnataka. Then type a question or a new fact and watch the map change.
+        </p>
 
         <div
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
           onDragLeave={() => setDrag(false)}
           onDrop={(e) => { e.preventDefault(); setDrag(false); void handle(e.dataTransfer.files?.[0]); }}
-          className={`rounded-2xl border-2 border-dashed p-8 text-center transition ${drag ? 'border-amber-brand bg-amber-brand/5' : 'border-ink-500 bg-ink-850/70'}`}
+          className={`relative mt-8 border border-ink p-6 ${drag ? 'bg-sheet outline outline-2 outline-offset-2 outline-ink' : 'bg-sheet/60'}`}
         >
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-ink-700 text-xl text-amber-brand">⇪</div>
-          <p className="font-display text-lg text-white">Drop your .xlsx here</p>
-          <p className="mt-1 text-xs text-slate-500">Sheet 1 Applications · Sheet 2 Territories · Sheet 3 Existing stores is built in</p>
+          {/* registration marks, as on a survey sheet */}
+          {['left-0 top-0', 'right-0 top-0', 'left-0 bottom-0', 'right-0 bottom-0'].map((p) => (
+            <span key={p} aria-hidden="true" className={`absolute ${p} h-3 w-3 -translate-x-0 bg-ink`} style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)', transform: p.includes('right') ? (p.includes('bottom') ? 'rotate(180deg)' : 'rotate(90deg)') : p.includes('bottom') ? 'rotate(270deg)' : undefined }} />
+          ))}
+          <p className="text-xl font-semibold">{drag ? 'Release to read the file' : 'Drop an Excel file here'}</p>
+          <p className="mt-1 max-w-[55ch] text-soft">Sheet 1 lists applications and sheet 2 lists territories. Existing stores are already built in.</p>
           <input ref={input} type="file" accept=".xlsx,.xlsm,.xls" className="sr-only" aria-label="Choose an Excel file" onChange={(e) => { void handle(e.target.files?.[0]); e.target.value = ''; }} />
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <button onClick={() => input.current?.click()} disabled={busy} className="rounded-xl border border-ink-500 bg-ink-700 px-5 py-2.5 text-sm font-medium text-white hover:border-slate-400">
-              {busy ? 'Reading…' : 'Choose file'}
-            </button>
-            <button onClick={() => loadDataset(sampleDataset(), 'Sample data')} className="rounded-xl bg-amber-brand px-5 py-2.5 text-sm font-semibold text-ink-950 hover:brightness-110">
-              Work with sample data →
-            </button>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={() => input.current?.click()} disabled={busy} className={btn + ' px-4 py-2'}>{busy ? 'Reading the file' : 'Choose a file from this computer'}</button>
+            <button onClick={() => loadDataset(sampleDataset(), 'Sample data')} className={btnPrimary + ' px-4 py-2'}>Use the sample data</button>
           </div>
-          <a href="./sample-applications.xlsx" download className="mt-4 inline-block text-xs text-slate-500 underline hover:text-slate-300">Download the sample as an .xlsx template</a>
+          <a href="./sample-applications.xlsx" download className="mt-4 inline-block text-sm underline underline-offset-2">Download the Excel template</a>
         </div>
 
         {error && (
-          <div role="alert" className="fade-in mt-4 rounded-xl border border-o-decline/50 bg-o-decline/10 p-4 text-sm text-red-200">
-            <b>That file didn’t load.</b> {error}
-            <div className="mt-1 text-xs text-red-200/70">Nothing was uploaded anywhere. You can try again, or use the sample data.</div>
+          <div role="alert" className="mt-4 border border-o-decline border-l-8 bg-sheet p-4">
+            <p className="font-semibold">That file didn’t load.</p>
+            <p>{error}</p>
+            <p className="mt-1 text-sm text-soft">Try again with another file, or use the sample data.</p>
           </div>
         )}
-        <p className="mt-6 text-center text-[11px] text-slate-600">No login · no server · your file never leaves this browser tab</p>
+        <p className="mt-6 max-w-[62ch] text-sm text-soft">
+          Your file is read in this browser. If cloud storage is available, a copy is also saved so you can share a link to it. Decisions come from fixed rules, not from an AI model.
+        </p>
       </div>
+
+      <aside aria-labelledby="meaning">
+        <h2 id="meaning" className="border-b border-ink pb-2 text-xl font-semibold">What the five outcomes mean</h2>
+        <ul>
+          {MEANING.map(([o, text]) => (
+            <li key={o} className="flex gap-3 border-b border-rule py-3">
+              <Mark o={o} size={28} />
+              <div>
+                <p className="font-semibold">{o}</p>
+                <p className="max-w-[44ch] text-soft">{text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </aside>
     </main>
   );
 }

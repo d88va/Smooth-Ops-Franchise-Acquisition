@@ -4,16 +4,21 @@ import geo from '../data/karnataka.geo.json';
 import { CITIES, cityByName, pinPosition } from '../data/cityGeo';
 import type { Dataset, EngineResult } from '../engine';
 import type { Layers } from '../state/store';
-import { OUTCOME_COLOR, PRIORITY_COLOR } from './ui';
+import { MarkShape, OUTCOME_COLOR } from './ui';
 
-const W = 800;
+const W = 680;
 const H = 800;
 const STATE = geo as unknown as GeoJSON.FeatureCollection<GeoJSON.MultiPolygon, { district: string }>;
-const GLOW = { High: '#ff6a3d', Medium: '#ffb02e', Low: '#7aa7d9' } as const;
+const INK = '#17263A';
+const CONTOUR = '#3F5F80';
+const RULE = '#B4BFBD';
+const SHEET = '#F5F7F6';
 
 interface Props {
   ds: Dataset;
   result: EngineResult;
+  /** Result before the last change; used to draw the struck-through old marker next to changed pins. */
+  prev?: EngineResult | null;
   focus: string; // 'state' | city name
   selected: string | null;
   changed: string[];
@@ -25,13 +30,25 @@ interface Props {
   inset?: boolean;
 }
 
-export function GeoMap({ ds, result, focus, selected, changed, visible, layers, onSelect, onFocus, compact, inset }: Props) {
+/** Scalloped outline: the revision cloud a draftsman draws around anything changed since the last issue. */
+function cloudPath(cx: number, cy: number, R: number): string {
+  const n = 11;
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+    return [cx + R * Math.cos(a), cy + R * Math.sin(a)] as const;
+  });
+  const chord = 2 * R * Math.sin(Math.PI / n);
+  const r = chord * 0.58;
+  return `M${pts[0][0]} ${pts[0][1]}` + pts.slice(1).concat([pts[0]]).map((p) => ` A${r} ${r} 0 0 1 ${p[0]} ${p[1]}`).join('');
+}
+
+export function GeoMap({ ds, result, prev, focus, selected, changed, visible, layers, onSelect, onFocus, compact, inset }: Props) {
   const uid = useId().replace(/:/g, '');
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const hv = (id: string, e: React.MouseEvent) => {
     const r = wrap.current?.getBoundingClientRect();
-    if (r) setHover({ id, x: Math.min(e.clientX - r.left, r.width - 250), y: e.clientY - r.top });
+    if (r) setHover({ id, x: Math.max(0, Math.min(e.clientX - r.left, r.width - 250)), y: e.clientY - r.top });
   };
   const cityFocus = focus !== 'state' ? cityByName(focus) : null;
   const zoom = cityFocus ? 1 : 0;
@@ -41,7 +58,7 @@ export function GeoMap({ ds, result, focus, selected, changed, visible, layers, 
       const span = cityFocus.name === 'Bengaluru' ? 0.22 : 0.12;
       return geoMercator().center([cityFocus.lng, cityFocus.lat]).scale(W / ((span * Math.PI) / 180)).translate([W / 2, H / 2]);
     }
-    return geoMercator().fitExtent([[44, 44], [W - 44, H - 44]], STATE);
+    return geoMercator().fitExtent([[56, 56], [W - 56, H - 56]], STATE);
   }, [cityFocus]);
   const path = useMemo(() => geoPath(proj), [proj]);
   const P = (lat: number, lng: number) => proj([lng, lat]) as [number, number];
@@ -63,7 +80,7 @@ export function GeoMap({ ds, result, focus, selected, changed, visible, layers, 
       const g = groups.get(a.pin) as string[];
       const i = g.indexOf(a.id);
       const ang = (i / Math.max(g.length, 1)) * Math.PI * 2 + 0.6;
-      const r = g.length > 1 ? (zoom ? 11 : 4) : 0;
+      const r = g.length > 1 ? (zoom ? 15 : 7) : 0;
       m.set(a.id, [x + r * Math.cos(ang), y + r * Math.sin(ang)]);
     }
     return m;
@@ -86,14 +103,14 @@ export function GeoMap({ ds, result, focus, selected, changed, visible, layers, 
 
   const filled = new Map(result.territories.map((t) => [t.territory.id, t.filled]));
   const bubbles = useMemo(() => {
-    const list: { key: string; x: number; y: number; open: number; total: number; priority: 'High' | 'Medium' | 'Low'; label: string; city?: string }[] = [];
+    const list: { key: string; x: number; y: number; open: number; total: number; label: string; city?: string }[] = [];
     if (cityFocus) {
       for (const t of ds.territories) {
         if (t.city !== cityFocus.name) continue;
         const pos = terrPos.get(t.id);
         if (!pos) continue;
         const f = filled.get(t.id) ?? 0;
-        list.push({ key: t.id, x: pos[0], y: pos[1], open: Math.max(0, t.slots - f), total: t.slots, priority: t.priority, label: t.id });
+        list.push({ key: t.id, x: pos[0], y: pos[1], open: Math.max(0, t.slots - f), total: t.slots, label: t.id });
       }
       return list;
     }
@@ -104,197 +121,198 @@ export function GeoMap({ ds, result, focus, selected, changed, visible, layers, 
       if (!c) continue;
       const open = ts.reduce((s, t) => s + Math.max(0, t.slots - (filled.get(t.id) ?? 0)), 0);
       const total = ts.reduce((s, t) => s + t.slots, 0);
-      const pr = (['High', 'Medium', 'Low'] as const).find((p) => ts.some((t) => t.priority === p)) ?? 'Medium';
       const [x, y] = P(c.lat, c.lng);
-      list.push({ key: city, x, y, open, total, priority: pr, label: ts.length > 1 ? `${ts.length} terr.` : ts[0].id, city });
+      list.push({ key: city, x, y, open, total, label: ts.length > 1 ? `${ts.length} territories` : ts[0].id, city });
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ds, result, proj]);
 
   const showCity = (name: string) => !cityFocus || cityFocus.name === name;
-  const dotR = (zoom ? 6.5 : 4.4) * (compact ? 0.9 : 1);
+  const mk = (zoom ? 24 : 15) * (compact ? 0.9 : 1);
   const catch_ = zoom ? 46 : 12;
-  const inBox = (x: number, y: number) => x > -30 && y > -30 && x < W + 30 && y < H + 30;
+  const inBox = (x: number, y: number) => x > 30 && y > 30 && x < W - 30 && y < H - 30;
   const id = (s: string) => `${s}-${uid}`;
+  const halo = { paintOrder: 'stroke', stroke: SHEET, strokeWidth: 3, strokeLinejoin: 'round' } as const;
+
+  const gridLng: number[] = [];
+  const gridLat: number[] = [];
+  if (!inset) {
+    if (cityFocus) {
+      const step = 0.05;
+      for (let v = Math.ceil((cityFocus.lng - 0.15) / step) * step; v < cityFocus.lng + 0.15; v += step) gridLng.push(+v.toFixed(2));
+      for (let v = Math.ceil((cityFocus.lat - 0.15) / step) * step; v < cityFocus.lat + 0.15; v += step) gridLat.push(+v.toFixed(2));
+    } else {
+      for (let v = 74; v <= 79; v++) gridLng.push(v);
+      for (let v = 11; v <= 19; v++) gridLat.push(v);
+    }
+  }
+
+  const selectKey = (aid: string) => (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect?.(aid);
+    }
+  };
 
   return (
     <div ref={wrap} className="relative h-full w-full select-none">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="img" aria-label={`Map of Karnataka franchise territories${cityFocus ? ', zoomed into ' + cityFocus.name : ''}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" role="group" aria-label={`Map of Karnataka franchise territories${cityFocus ? ', zoomed into ' + cityFocus.name : ''}. Pin positions are approximate.`}>
         <defs>
-          <radialGradient id={id('bg')} cx="50%" cy="45%" r="80%">
-            <stop offset="0%" stopColor="#10161e" />
-            <stop offset="100%" stopColor="#07090c" />
-          </radialGradient>
-          {(['High', 'Medium', 'Low'] as const).map((p) => (
-            <radialGradient key={p} id={id('glow' + p)}>
-              <stop offset="0%" stopColor={GLOW[p]} stopOpacity="0.75" />
-              <stop offset="45%" stopColor={GLOW[p]} stopOpacity="0.28" />
-              <stop offset="100%" stopColor={GLOW[p]} stopOpacity="0" />
-            </radialGradient>
-          ))}
-          <radialGradient id={id('heat')}>
-            <stop offset="0%" stopColor="#ffd04a" stopOpacity="0.85" />
-            <stop offset="55%" stopColor="#ff9d2e" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#ff7a1a" stopOpacity="0" />
-          </radialGradient>
-          <clipPath id={id('clip')}>{districts.map((d) => <path key={d.name} d={d.d} />)}</clipPath>
-          {/* faint "street grid" texture, clipped to the state */}
-          <pattern id={id('grid1')} width={zoom ? 46 : 20} height={zoom ? 46 : 20} patternUnits="userSpaceOnUse" patternTransform="rotate(17)">
-            <path d={`M0 0H${zoom ? 46 : 20}M0 0V${zoom ? 46 : 20}`} stroke="#2d3a4a" strokeWidth="0.5" fill="none" />
-          </pattern>
-          <pattern id={id('grid2')} width={zoom ? 120 : 52} height={zoom ? 120 : 52} patternUnits="userSpaceOnUse" patternTransform="rotate(-48)">
-            <path d={`M0 0H${zoom ? 120 : 52}`} stroke="#35465a" strokeWidth="0.7" fill="none" />
-          </pattern>
+          <clipPath id={id('sheet')}><rect x={22} y={22} width={W - 44} height={H - 44} /></clipPath>
         </defs>
-        <rect width={W} height={H} fill={`url(#${id('bg')})`} />
+        <rect width={W} height={H} fill={SHEET} />
 
-        {/* state: glow under, fill, texture, district borders */}
-        <g>
-          <g style={{ filter: 'blur(5px)' }}>{districts.map((d) => <path key={'g' + d.name} d={d.d} fill="#f5b942" fillOpacity="0.05" stroke="#f5b942" strokeOpacity="0.22" strokeWidth={zoom ? 14 : 9} strokeLinejoin="round" />)}</g>
-          {districts.map((d) => <path key={'f' + d.name} d={d.d} fill="#141b25" stroke="#141b25" strokeWidth={2} />)}
-          <g clipPath={`url(#${id('clip')})`}>
-            <rect width={W} height={H} fill={`url(#${id('grid1')})`} opacity="0.55" />
-            <rect width={W} height={H} fill={`url(#${id('grid2')})`} opacity="0.5" />
+        <g clipPath={`url(#${id('sheet')})`}>
+          {/* graticule */}
+          {gridLng.map((v) => { const x = P(cityFocus ? cityFocus.lat : 15, v)[0]; return <line key={'gx' + v} x1={x} x2={x} y1={0} y2={H} stroke={RULE} strokeWidth={0.7} />; })}
+          {gridLat.map((v) => { const y = P(v, cityFocus ? cityFocus.lng : 76)[1]; return <line key={'gy' + v} x1={0} x2={W} y1={y} y2={y} stroke={RULE} strokeWidth={0.7} />; })}
+
+          {/* state outline, then district fill, then district borders */}
+          <g>
+            {districts.map((d) => <path key={'o' + d.name} d={d.d} fill={INK} stroke={INK} strokeWidth={zoom ? 5 : 3.6} strokeLinejoin="round" />)}
+            {districts.map((d) => <path key={'f' + d.name} d={d.d} fill="#EEF2F0" stroke="#EEF2F0" strokeWidth={2} />)}
+            {districts.map((d) => <path key={'b' + d.name} d={d.d} fill="none" stroke={CONTOUR} strokeOpacity={0.55} strokeWidth={zoom ? 1.1 : 0.7} strokeLinejoin="round" />)}
           </g>
-          {districts.map((d) => <path key={'b' + d.name} d={d.d} fill="none" stroke="#3b4c61" strokeOpacity="0.7" strokeWidth={zoom ? 1.2 : 0.7} strokeLinejoin="round" />)}
+
+          {!compact && !inset && !zoom &&
+            districts.map((d) => (d.c && inBox(d.c[0], d.c[1]) ? (
+              <text key={'t' + d.name} x={d.c[0]} y={d.c[1]} textAnchor="middle" fontSize={8.5} fill={CONTOUR} opacity={0.8} fontFamily="IBM Plex Sans Condensed, sans-serif" fontStyle="italic" style={halo}>{d.name}</text>
+            ) : null))}
+
+          {/* city names, each with a small survey cross on its centre */}
+          {!compact && !inset &&
+            CITIES.filter((c) => showCity(c.name)).map((c) => {
+              const [x, y] = P(c.lat, c.lng);
+              if (!inBox(x, y)) return null;
+              return (
+                <g key={c.name}>
+                  {!zoom && <path d={`M${x - 4} ${y}H${x + 4}M${x} ${y - 4}V${y + 4}`} stroke={INK} strokeWidth={1} />}
+                  <text x={zoom ? 36 : x + 8} y={zoom ? 56 : y + 14} fontSize={zoom ? 26 : 12} fontWeight={600} fill={INK} fontFamily="IBM Plex Sans Condensed, sans-serif" style={halo}>{c.name}</text>
+                </g>
+              );
+            })}
+
+          {/* territories: the bubble is the area the territory covers */}
+          {layers.territories &&
+            bubbles.map((b) => {
+              const r = (b.open > 0 ? 9 + 6.5 * Math.sqrt(b.open) * (zoom ? 2.1 : 1.4) : 6 * (zoom ? 2 : 1)) * (zoom ? 1.3 : 1);
+              const clickable = !!b.city && !!onFocus && ds.territories.filter((t) => t.city === b.city).length > 1;
+              return (
+                <g key={b.key} onClick={() => clickable && onFocus?.(b.city as string)} style={{ cursor: clickable ? 'zoom-in' : 'default' }}>
+                  <title>{`${b.label}: ${b.open} of ${b.total} slots open${clickable ? '. Click to zoom in.' : ''}`}</title>
+                  <circle cx={b.x} cy={b.y} r={r} fill={CONTOUR} fillOpacity={b.open > 0 ? 0.1 : 0.03} stroke={CONTOUR} strokeWidth={zoom ? 2 : 1.3} strokeDasharray={b.open > 0 ? undefined : '3 3'} />
+                  {!compact && !inset && (
+                    <text x={b.x} y={b.y - r - (zoom ? 8 : 4)} textAnchor="middle" fontSize={zoom ? 17 : 9} fill={INK} fontFamily="IBM Plex Mono, monospace" style={halo}>
+                      {b.label} · {b.open}/{b.total} open
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+          {/* existing stores: small store icon at the centre of the area it covers */}
+          {layers.stores &&
+            ds.stores.filter((s) => showCity(s.city)).map((s) => {
+              const pp = pinPosition(s.pin, s.city);
+              if (!pp) return null;
+              const [x, y] = P(pp.lat, pp.lng);
+              const k = zoom ? 1.7 : 1.15;
+              return (
+                <g key={s.id}>
+                  <title>{`Existing store ${s.id}, pin ${s.pin}`}</title>
+                  <circle cx={x} cy={y} r={catch_} fill={INK} fillOpacity={0.05} stroke={INK} strokeWidth={zoom ? 1.6 : 1} />
+                  <path d={`M${x - 5 * k} ${y + 5 * k}V${y - 1 * k}M${x + 5 * k} ${y + 5 * k}V${y - 1 * k}`} stroke={INK} strokeWidth={1.2} fill="none" />
+                  <path d={`M${x - 6 * k} ${y - 1 * k}L${x - 4.5 * k} ${y - 5.5 * k}H${x + 4.5 * k}L${x + 6 * k} ${y - 1 * k}Z`} fill={INK} />
+                  <path d={`M${x - 5 * k} ${y + 5 * k}H${x + 5 * k}`} stroke={INK} strokeWidth={1.2} />
+                  {!compact && !inset && zoom > 0 && <text x={x + 12} y={y + 32} fontSize={14} fill={INK} fontFamily="IBM Plex Mono, monospace" style={halo}>{s.id} · {s.pin}</text>}
+                </g>
+              );
+            })}
+
+          {layers.rings &&
+            ds.applications.filter((a) => result.decisions[a.id].outcome === 'Approved' && showCity(a.city ?? '')).map((a) => {
+              const p = appPos.get(a.id);
+              return p ? <circle key={'r' + a.id} cx={p[0]} cy={p[1]} r={catch_ * 0.45} fill="none" stroke={OUTCOME_COLOR.Approved} strokeWidth={1.4} strokeDasharray="3 3" /> : null;
+            })}
+
+          {layers.arcs &&
+            ds.applications.map((a) => {
+              const d = result.decisions[a.id];
+              const from = appPos.get(a.id);
+              if (!from) return null;
+              let to: [number, number] | undefined;
+              let color = '';
+              let dash: string | undefined;
+              if (d.outcome === 'Redirect' && d.redirect) {
+                const pp = pinPosition(d.redirect.pin, a.city);
+                if (pp) to = P(pp.lat, pp.lng);
+                color = OUTCOME_COLOR.Redirect;
+                dash = '5 4';
+              } else if (d.outcome === 'Approved' && d.territoryId) {
+                to = terrPos.get(d.territoryId);
+                color = OUTCOME_COLOR.Approved;
+              }
+              if (!to || Math.hypot(to[0] - from[0], to[1] - from[1]) < 3) return null;
+              const mx = (from[0] + to[0]) / 2;
+              const my = (from[1] + to[1]) / 2 - Math.hypot(to[0] - from[0], to[1] - from[1]) * 0.25;
+              return <path key={'a' + a.id} d={`M${from[0]} ${from[1]} Q${mx} ${my} ${to[0]} ${to[1]}`} fill="none" stroke={color} strokeWidth={1.8} strokeDasharray={dash} />;
+            })}
+
+          {/* applicants */}
+          {layers.applicants &&
+            ds.applications.map((a) => {
+              const p = appPos.get(a.id);
+              if (!p) return null;
+              if (cityFocus && a.city !== cityFocus.name) return null;
+              const d = result.decisions[a.id];
+              const c = OUTCOME_COLOR[d.outcome];
+              const dim = visible && !visible.has(a.id);
+              const isChanged = changed.includes(a.id);
+              const was = prev?.decisions[a.id]?.outcome;
+              const R = mk * 1.25;
+              return (
+                <g key={a.id} opacity={dim ? 0.2 : 1} style={{ cursor: onSelect ? 'pointer' : 'default' }} onClick={() => onSelect?.(a.id)}
+                  role={onSelect ? 'button' : undefined} tabIndex={onSelect ? 0 : undefined} onKeyDown={onSelect ? selectKey(a.id) : undefined}
+                  aria-label={`${a.id}, ${a.name}: ${d.outcome}${isChanged ? ', changed' : ''}`}
+                  onMouseEnter={(e) => !compact && hv(a.id, e)} onMouseMove={(e) => !compact && hv(a.id, e)} onMouseLeave={() => setHover(null)}>
+                  <circle cx={p[0]} cy={p[1]} r={mk * 0.5 + 12} fill="transparent" />
+                  <circle cx={p[0]} cy={p[1]} r={mk * 1.05} fill={c} fillOpacity={0.16} stroke={c} strokeWidth={1} />
+                  {isChanged && <path d={cloudPath(p[0], p[1], R)} pathLength={1} fill="none" stroke={c} strokeWidth={2.8} strokeLinejoin="round" className="rev-cloud" />}
+                  {isChanged && <path d={cloudPath(p[0], p[1], R)} fill="none" stroke={INK} strokeWidth={0.9} strokeLinejoin="round" />}
+                  {selected === a.id && <circle cx={p[0]} cy={p[1]} r={mk * 0.95} fill="none" stroke={INK} strokeWidth={2.4} strokeDasharray="5 3" />}
+                  <MarkShape o={d.outcome} x={p[0]} y={p[1]} size={mk} />
+                  {isChanged && was && was !== d.outcome && !compact && !inset && (
+                    <g className="rev-ghost" opacity={0.9}>
+                      <MarkShape o={was} x={p[0] - R - 4} y={p[1] - R - 2} size={mk * 0.7} />
+                      <path d={`M${p[0] - R - 4 - mk * 0.5} ${p[1] - R - 2 + mk * 0.5}L${p[0] - R - 4 + mk * 0.5} ${p[1] - R - 2 - mk * 0.5}`} stroke={INK} strokeWidth={2} />
+                    </g>
+                  )}
+                  {!compact && !inset && zoom > 0 && <text x={p[0] + mk * 0.7 + 4} y={p[1] + 5} fontSize={13} fill={INK} fontFamily="IBM Plex Mono, monospace" style={halo}>{a.id.replace('APP-', '')}</text>}
+                </g>
+              );
+            })}
         </g>
 
-        {/* district names */}
-        {!compact && !inset && !zoom &&
-          districts.map((d) => (d.c && inBox(d.c[0], d.c[1]) ? (
-            <text key={'t' + d.name} x={d.c[0]} y={d.c[1]} textAnchor="middle" fontSize={8} fill="#6b7f96" opacity={0.55} fontFamily="Space Grotesk Variable, sans-serif" letterSpacing="0.1em" style={{ textTransform: 'uppercase' }}>
-              {d.name}
-            </text>
-          ) : null))}
-
-        {/* city labels */}
-        {!compact && !inset &&
-          CITIES.filter((c) => showCity(c.name)).map((c) => {
-            const [x, y] = P(c.lat, c.lng);
-            if (!inBox(x, y)) return null;
-            return (
-              <g key={c.name} opacity={0.9}>
-                {!zoom && <circle cx={x} cy={y} r={1.8} fill="#c5d2e2" />}
-                <text x={zoom ? 24 : x + 8} y={zoom ? 44 : y + 14} fontSize={zoom ? 26 : 11} fill="#c5d2e2" fontFamily="Space Grotesk Variable, sans-serif" fontWeight={600} letterSpacing="0.08em" style={{ textTransform: 'uppercase' }}>
-                  {c.name}
-                </text>
-              </g>
-            );
-          })}
-
-        {/* heat layer */}
-        {layers.heat && (
-          <g opacity={0.9} style={{ mixBlendMode: 'screen' }}>
-            {ds.applications.map((a) => {
-              const p = appPos.get(a.id);
-              return p ? <circle key={a.id} cx={p[0]} cy={p[1]} r={zoom ? 70 : 34} fill={`url(#${id('heat')})`} /> : null;
-            })}
+        {/* neatline with coordinate ticks */}
+        {!inset && (
+          <g>
+            {gridLng.map((v) => { const x = P(cityFocus ? cityFocus.lat : 15, v)[0]; return x > 40 && x < W - 40 ? <text key={'lx' + v} x={x} y={16} textAnchor="middle" fontSize={9} fill={INK} fontFamily="IBM Plex Mono, monospace">{v}°E</text> : null; })}
+            {gridLat.map((v) => { const y = P(v, cityFocus ? cityFocus.lng : 76)[1]; return y > 40 && y < H - 40 ? <text key={'ly' + v} x={0} y={0} transform={`translate(15 ${y}) rotate(-90)`} textAnchor="middle" fontSize={9} fill={INK} fontFamily="IBM Plex Mono, monospace">{v}°N</text> : null; })}
           </g>
         )}
-
-        {/* territory hotspots */}
-        {layers.territories &&
-          bubbles.map((b) => {
-            const base = b.open > 0 ? 9 + 6.5 * Math.sqrt(b.open) * (zoom ? 2.1 : 1.4) : 6 * (zoom ? 2 : 1);
-            const r = base * (zoom ? 1.3 : 1);
-            const c = PRIORITY_COLOR[b.priority];
-            const clickable = !!b.city && !!onFocus && ds.territories.filter((t) => t.city === b.city).length > 1;
-            return (
-              <g key={b.key} onClick={() => clickable && onFocus?.(b.city as string)} style={{ cursor: clickable ? 'zoom-in' : 'default' }}>
-                <circle cx={b.x} cy={b.y} r={r * 2.3} fill={`url(#${id('glow' + b.priority)})`} opacity={b.open > 0 ? 1 : 0.35} style={{ transition: 'r 600ms ease' }} />
-                <circle cx={b.x} cy={b.y} r={r} fill={GLOW[b.priority] + (b.open > 0 ? '22' : '0d')} stroke={GLOW[b.priority]} strokeOpacity={0.85} strokeWidth={zoom ? 2 : 1.2} strokeDasharray={b.open > 0 ? undefined : '3 3'} style={{ transition: 'r 600ms ease' }} />
-                <circle cx={b.x} cy={b.y} r={zoom ? 5 : 2.6} fill={GLOW[b.priority]} opacity={b.open > 0 ? 1 : 0.5} />
-                {!compact && !inset && (
-                  <text x={b.x} y={b.y + (zoom ? -r - 8 : -r - 4)} textAnchor="middle" fontSize={zoom ? 18 : 9} fill={c} fontFamily="JetBrains Mono, monospace" opacity={0.95}>
-                    {b.label} · {b.open}/{b.total}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-
-        {/* existing stores */}
-        {layers.stores &&
-          ds.stores.filter((s) => showCity(s.city)).map((s) => {
-            const pp = pinPosition(s.pin, s.city);
-            if (!pp) return null;
-            const [x, y] = P(pp.lat, pp.lng);
-            const k = zoom ? 1.6 : 1;
-            return (
-              <g key={s.id}>
-                <circle cx={x} cy={y} r={catch_} fill="none" stroke="#cdd6e2" strokeOpacity={0.6} strokeWidth={zoom ? 2 : 1.2} />
-                {layers.rings && <circle cx={x} cy={y} r={catch_ * 0.45} fill="#ff5d6c10" stroke="#ff5d6c" strokeOpacity={0.55} strokeDasharray="2 3" />}
-                <path d={`M${x - 5 * k} ${y + 3 * k} v${-5 * k} l${5 * k} ${-4 * k} l${5 * k} ${4 * k} v${5 * k} z`} fill="#0a0f15" stroke="#e7edf5" strokeWidth={1.2} />
-                {!compact && !inset && zoom > 0 && <text x={x + 12} y={y + 30} fontSize={14} fill="#aab7c7" fontFamily="JetBrains Mono, monospace">{s.id} · {s.pin}</text>}
-              </g>
-            );
-          })}
-
-        {/* approved partner spacing rings */}
-        {layers.rings &&
-          ds.applications.filter((a) => result.decisions[a.id].outcome === 'Approved' && showCity(a.city ?? '')).map((a) => {
-            const p = appPos.get(a.id);
-            return p ? <circle key={'r' + a.id} cx={p[0]} cy={p[1]} r={catch_ * 0.45} fill="none" stroke="#3ddc97" strokeOpacity={0.5} strokeDasharray="2 3" /> : null;
-          })}
-
-        {/* flow arcs */}
-        {layers.arcs &&
-          ds.applications.map((a) => {
-            const d = result.decisions[a.id];
-            const from = appPos.get(a.id);
-            if (!from) return null;
-            let to: [number, number] | undefined;
-            let color = '';
-            let dash: string | undefined;
-            if (d.outcome === 'Redirect' && d.redirect) {
-              const pp = pinPosition(d.redirect.pin, a.city);
-              if (pp) to = P(pp.lat, pp.lng);
-              color = OUTCOME_COLOR.Redirect;
-              dash = '5 4';
-            } else if (d.outcome === 'Approved' && d.territoryId) {
-              to = terrPos.get(d.territoryId);
-              color = OUTCOME_COLOR.Approved;
-            }
-            if (!to || Math.hypot(to[0] - from[0], to[1] - from[1]) < 3) return null;
-            const mx = (from[0] + to[0]) / 2;
-            const my = (from[1] + to[1]) / 2 - Math.hypot(to[0] - from[0], to[1] - from[1]) * 0.25;
-            return <path key={'a' + a.id} d={`M${from[0]} ${from[1]} Q${mx} ${my} ${to[0]} ${to[1]}`} fill="none" stroke={color} strokeOpacity={0.7} strokeWidth={1.5} strokeDasharray={dash} />;
-          })}
-
-        {/* applicants */}
-        {layers.applicants &&
-          ds.applications.map((a) => {
-            const p = appPos.get(a.id);
-            if (!p) return null;
-            if (cityFocus && a.city !== cityFocus.name) return null;
-            const d = result.decisions[a.id];
-            const c = OUTCOME_COLOR[d.outcome];
-            const dim = visible && !visible.has(a.id);
-            const pulsing = changed.includes(a.id);
-            return (
-              <g key={a.id} opacity={dim ? 0.15 : 1} style={{ cursor: onSelect ? 'pointer' : 'default' }} onClick={() => onSelect?.(a.id)}
-                onMouseEnter={(e) => !compact && hv(a.id, e)} onMouseMove={(e) => !compact && hv(a.id, e)} onMouseLeave={() => setHover(null)}>
-                {pulsing && <circle cx={p[0]} cy={p[1]} r={dotR} fill="none" stroke={c} strokeWidth={2} className="pulse-ring" />}
-                {pulsing && <circle cx={p[0]} cy={p[1]} r={dotR} fill="none" stroke={c} strokeWidth={2} className="pulse-ring" style={{ animationDelay: '0.6s' }} />}
-                <circle cx={p[0]} cy={p[1]} r={dotR + 6} fill="transparent" />
-                <circle cx={p[0]} cy={p[1]} r={dotR * 2.2} fill={c} opacity={0.18} />
-                <circle cx={p[0]} cy={p[1]} r={dotR} fill={c} stroke={selected === a.id ? '#fff' : '#0a0f15'} strokeWidth={selected === a.id ? 2.4 : 1.2} style={{ transition: 'fill 500ms', filter: `drop-shadow(0 0 4px ${c})` }} />
-                {!compact && !inset && zoom > 0 && <text x={p[0] + dotR + 4} y={p[1] + 4} fontSize={13} fill={c} fontFamily="JetBrains Mono, monospace">{a.id.replace('APP-', '')}</text>}
-              </g>
-            );
-          })}
+        <rect x={22} y={22} width={W - 44} height={H - 44} fill="none" stroke={INK} strokeWidth={1.4} />
       </svg>
       {hover && !compact && (() => {
         const a = ds.applications.find((x) => x.id === hover.id);
         const d = result.decisions[hover.id];
         if (!a || !d) return null;
         return (
-          <div className="pointer-events-none absolute z-20 max-w-[240px] rounded-lg border border-white/10 bg-ink-900/90 px-3 py-2 text-xs shadow-xl backdrop-blur" style={{ left: hover.x + 14, top: hover.y + 14 }}>
-            <div className="font-display text-sm text-white">{a.id} · {a.name}</div>
-            <div style={{ color: OUTCOME_COLOR[d.outcome] }} className="font-medium">{d.outcome} · score {d.score}</div>
-            <div className="mt-0.5 text-slate-400">{d.headline}</div>
-            <div className="mt-0.5 font-mono text-[10px] text-slate-500">{a.city} {a.pinRaw}</div>
+          <div className="pointer-events-none absolute z-20 max-w-[240px] border border-ink bg-sheet px-3 py-2 text-xs" style={{ left: hover.x + 14, top: hover.y + 14 }}>
+            <div className="font-cond text-sm font-semibold">{a.id} · {a.name}</div>
+            <div className="font-medium">{d.outcome}, score {d.score}</div>
+            <div className="mt-0.5 text-soft">{d.headline}</div>
+            <div className="mt-0.5 font-mono text-[10px] text-soft">{a.city} {a.pinRaw}</div>
           </div>
         );
       })()}

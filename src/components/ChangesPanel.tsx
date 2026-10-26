@@ -1,68 +1,87 @@
 import { select, setCompare, undo, reset, useStore } from '../state/store';
 import { GeoMap } from './GeoMap';
-import { Badge, Card, SectionTitle } from './ui';
+import { Badge, btn, Panel, SectionTitle } from './ui';
+
+const LAYERS = { territories: true, stores: true, applicants: true, rings: false, arcs: false, heat: false };
 
 export function ChangesPanel() {
   const diff = useStore((s) => s.diff);
   const log = useStore((s) => s.log);
+  const compare = useStore((s) => s.compare);
+  const canUndo = useStore((s) => s.history.length > 0);
+  const last = log[log.length - 1];
+  const hasDiff = !!diff && !!last;
+
+  return (
+    <Panel>
+      <SectionTitle>What changed and why</SectionTitle>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <button onClick={() => setCompare(!compare)} disabled={!hasDiff} aria-pressed={compare} className={btn + (compare ? ' bg-ink text-paper' : '')}>
+          {compare ? 'Hide before and after' : 'Show before and after'}
+        </button>
+        <button onClick={undo} disabled={!canUndo} className={btn}>Undo</button>
+        <button onClick={reset} disabled={!log.length} className={btn}>Go back to the uploaded file</button>
+      </div>
+
+      {!hasDiff ? (
+        <p className="max-w-[62ch] text-soft">Nothing has changed yet. Ask “APP-012 found a ground-floor space”. Every pin that moves gets a scalloped outline on the map, and this list says why.</p>
+      ) : (
+        <div>
+          <p className="mb-2 max-w-[75ch]">Last update: <b className="font-medium">{last.text}</b>. {diff.changes.length} changed, {diff.unchanged} did not.</p>
+          {diff.changes.length === 0 && <p>No decision changed. This update did not affect any outcome or pin.</p>}
+          <ul>
+            {diff.changes.map((c) => (
+              <li key={c.id} className="border-t border-rule py-3">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <button onClick={() => select(c.id)} className="font-mono text-base font-medium underline underline-offset-2">{c.id}</button>
+                  <span className="text-soft">was</span><Badge o={c.from} small />
+                  <span className="text-soft">now</span><Badge o={c.to} small />
+                  <span className="ml-auto font-mono text-xs text-soft">score {c.scoreFrom} to {c.scoreTo}</span>
+                </div>
+                <p className="mt-1 max-w-[75ch]">{c.primary}</p>
+                {c.knockOn && (
+                  <p className="mt-2 max-w-[75ch] border-l-4 border-ink bg-sheet px-3 py-1.5"><b className="font-semibold">Knock-on effect.</b> {c.knockOn}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+    </Panel>
+  );
+}
+
+export function BeforeAfter() {
+  const diff = useStore((s) => s.diff);
   const compare = useStore((s) => s.compare);
   const prev = useStore((s) => s.prev);
   const result = useStore((s) => s.result);
   const baseResult = useStore((s) => s.baseResult);
   const ds = useStore((s) => s.ds);
   const baseDS = useStore((s) => s.baseDS);
-  const canUndo = useStore((s) => s.history.length > 0);
-  const last = log[log.length - 1];
-  const layers = { territories: true, stores: true, applicants: true, rings: false, arcs: false, heat: false };
-
+  if (!compare || !baseResult || !baseDS) return null;
+  // Zoom both maps to the city where things moved, so the difference is big enough to see.
+  const cities = new Set((diff?.changes ?? []).map((c) => ds.applications.find((a) => a.id === c.id)?.city).filter(Boolean));
+  const focus = cities.size === 1 ? ([...cities][0] as string) : 'state';
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={undo} disabled={!canUndo} className="rounded-lg border border-ink-500 px-3 py-1.5 text-xs text-slate-200 disabled:opacity-40">↶ Undo</button>
-        <button onClick={reset} disabled={!log.length} className="rounded-lg border border-ink-500 px-3 py-1.5 text-xs text-slate-200 disabled:opacity-40">Reset to baseline</button>
-        <button onClick={() => setCompare(!compare)} disabled={!prev && !baseResult} className="rounded-lg border border-amber-brand/50 px-3 py-1.5 text-xs text-amber-brand disabled:opacity-40">{compare ? 'Hide' : 'Show'} before / after</button>
+    <Panel>
+      <SectionTitle right={<button onClick={() => setCompare(false)} className="text-sm underline underline-offset-2">Hide</button>}>Before and after</SectionTitle>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[{ title: prev ? 'Before the last update' : 'The uploaded file', r: prev ?? baseResult, d: prev ? ds : baseDS, now: false }, { title: 'Now', r: result, d: ds, now: true }].map((x) => (
+          <figure key={x.title}>
+            <figcaption className="mb-1 flex flex-wrap justify-between gap-x-3 text-sm">
+              <span className="font-semibold">{x.title}</span>
+              <span className="text-soft">{x.r.counts.Approved} approved, {x.r.counts.Hold} on hold, {x.r.counts.Waitlist} waitlisted, {x.r.counts.Redirect} redirected, {x.r.counts.Decline} declined</span>
+            </figcaption>
+            <div className="aspect-[17/20] border border-ink">
+              <GeoMap ds={x.d} result={x.r} focus={focus} selected={null} changed={x.now ? diff?.changes.map((c) => c.id) ?? [] : []} visible={null} layers={LAYERS} compact={focus === 'state'} />
+            </div>
+          </figure>
+        ))}
       </div>
-
-      {!diff || !last ? (
-        <Card className="p-4 text-sm text-slate-400">No changes yet. Try “APP-012 found a ground-floor space” in the query bar. Every applicant whose outcome moves will be listed here with the cause and knock-on effects.</Card>
-      ) : (
-        <Card className="fade-in p-4">
-          <SectionTitle right={<span className="text-[11px] text-slate-500">{diff.changes.length} changed · {diff.unchanged} unchanged</span>}>What changed and why</SectionTitle>
-          <div className="mb-2 text-xs text-slate-400">Last update: <span className="text-slate-200">{last.text}</span></div>
-          {diff.changes.length === 0 && <p className="text-sm text-slate-300">No decision changed. This update did not affect any outcome or pin.</p>}
-          <ul className="space-y-3">
-            {diff.changes.map((c) => (
-              <li key={c.id} className="rounded-lg border border-ink-600 bg-ink-800/60 p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={() => select(c.id)} className="font-mono text-sm font-semibold text-white underline decoration-ink-500 hover:decoration-amber-brand">{c.id}</button>
-                  <Badge o={c.from} small /> <span className="text-slate-500">→</span> <Badge o={c.to} small />
-                  <span className="ml-auto font-mono text-[10px] text-slate-500">score {c.scoreFrom} → {c.scoreTo}</span>
-                </div>
-                <p className="mt-1.5 text-[13px] text-slate-300">{c.primary}</p>
-                {c.knockOn && <p className="mt-1 text-[12px] text-amber-200/90"><b>Knock-on:</b> {c.knockOn}</p>}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
-      {compare && baseResult && baseDS && (
-        <Card className="fade-in p-3">
-          <SectionTitle>Before / after</SectionTitle>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[{ title: prev ? 'Before last update' : 'Baseline', r: prev ?? baseResult, d: prev ? (ds === baseDS ? baseDS : ds) : baseDS }, { title: 'Now', r: result, d: ds }].map((x) => (
-              <div key={x.title}>
-                <div className="mb-1 flex justify-between text-[11px] text-slate-400"><span className="font-display uppercase tracking-wider">{x.title}</span><span>{x.r.counts.Approved} approved · {x.r.counts.Hold} hold · {x.r.counts.Waitlist} wait · {x.r.counts.Redirect} redir · {x.r.counts.Decline} decl</span></div>
-                <div className="aspect-square overflow-hidden rounded-lg border border-ink-600">
-                  <GeoMap ds={x.d} result={x.r} focus="state" selected={null} changed={x.title === 'Now' ? diff?.changes.map((c) => c.id) ?? [] : []} visible={null} layers={layers} compact />
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-[10px] text-slate-500">Pulsing dots on the right are the applicants whose outcome changed.</p>
-        </Card>
-      )}
-    </div>
+      <p className="mt-2 text-sm text-soft">Scalloped outlines on the right mark applicants whose outcome changed.{focus !== 'state' && ` Both maps are zoomed to ${focus}.`}</p>
+    </Panel>
   );
 }
 
@@ -70,30 +89,30 @@ export function ScenarioLog() {
   const log = useStore((s) => s.log);
   const overrides = useStore((s) => s.overrides);
   return (
-    <div className="space-y-3">
-      <Card className="p-4">
-        <SectionTitle>Scenario log (cumulative)</SectionTitle>
-        {!log.length ? <p className="text-sm text-slate-400">Nothing applied yet. The map shows the uploaded baseline.</p> : (
-          <ol className="space-y-2 text-[13px]">
+    <div className="grid gap-6 md:grid-cols-2">
+      <Panel>
+        <SectionTitle>Changes you have made</SectionTitle>
+        {!log.length ? <p className="text-soft">Nothing yet. The map shows the file as uploaded.</p> : (
+          <ol className="space-y-2">
             {log.map((l) => (
-              <li key={l.n} className="flex gap-2.5">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink-700 font-mono text-[10px] text-slate-300">{l.n}</span>
-                <div className="flex-1"><span className="text-slate-200">{l.text}</span> <span className="text-[11px] text-slate-500">· {l.changed} decision{l.changed === 1 ? '' : 's'} changed · {l.kind}</span></div>
+              <li key={l.n} className="flex gap-3 border-t border-rule pt-2">
+                <span className="w-6 shrink-0 font-mono text-sm text-soft">{l.n}</span>
+                <p>{l.text} <span className="text-sm text-soft">({l.changed} decision{l.changed === 1 ? '' : 's'} changed)</span></p>
               </li>
             ))}
           </ol>
         )}
-      </Card>
-      <Card className="p-4">
-        <SectionTitle>Override log</SectionTitle>
-        {!Object.keys(overrides).length ? <p className="text-sm text-slate-400">No overrides. Overrides are how the expansion team corrects the engine; the rate of overrides is the tool's trust metric.</p> : (
-          <ul className="space-y-1.5 text-[13px] text-slate-300">
+      </Panel>
+      <Panel>
+        <SectionTitle>Manual overrides</SectionTitle>
+        {!Object.keys(overrides).length ? <p className="max-w-[60ch] text-soft">None. An override lets the expansion team correct the engine and records why.</p> : (
+          <ul className="space-y-2">
             {Object.entries(overrides).map(([id, o]) => (
-              <li key={id}><button onClick={() => select(id)} className="font-mono text-white underline">{id}</button> → {o.outcome}: {o.reason}</li>
+              <li key={id} className="border-t border-rule pt-2"><button onClick={() => select(id)} className="font-mono underline underline-offset-2">{id}</button> set to {o.outcome}: {o.reason}</li>
             ))}
           </ul>
         )}
-      </Card>
+      </Panel>
     </div>
   );
 }
